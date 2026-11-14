@@ -62,6 +62,7 @@ cp .env.example .env
 ```
 
 用编辑器打开项目根目录的 `.env`，至少填这三项：
+目前建议用Deepseek flash
 
 - `LLM_BASE_URL`：模型服务地址，一般以 `/v1` 结尾
 - `LLM_API_KEY`：密钥
