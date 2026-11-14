@@ -2,8 +2,6 @@
 
 由大模型担任主持人的单人跑团。Python 3.10–3.13，asyncio + aiohttp + SQLite，单进程本机运行；需要一个兼容 OpenAI Chat Completions 的模型服务，运行时不会自动退回 mock。
 
-模块职责、数据结构与回合流程见 [docs/implementation-handbook.md](docs/implementation-handbook.md)。
-
 ## 安装与启动
 
 ```sh
