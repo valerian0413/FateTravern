@@ -1,0 +1,9 @@
+{
+  "name": "隐藏保管费",
+  "preset_id": "sky-islands-v1",
+  "actions": [
+    {"request_id": "crate-1", "text": "我看看旁边的木箱", "mode_hint": "行动"},
+    {"request_id": "crate-2", "text": "我阅读贴在箱子上的凭据", "mode_hint": "行动"}
+  ],
+  "notes": "箱子外观与保管费必须是不同事实；仅观察不得获知费用"
+}

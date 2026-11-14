@@ -1,0 +1,11 @@
+{
+  "ruleset_id": "four-dice-v1",
+  "targets": {
+    "easy": 0,
+    "standard": 2,
+    "hard": 4,
+    "extreme": 6
+  },
+  "environment_step": 1,
+  "tie_succeeds": true
+}

@@ -1,0 +1,10 @@
+CREATE INDEX IF NOT EXISTS idx_entities_location ON entities(world_id, location_id);
+CREATE INDEX IF NOT EXISTS idx_facts_subject ON facts(world_id, subject_id, status);
+CREATE INDEX IF NOT EXISTS idx_knowledge_observer ON knowledge(world_id, observer_id);
+CREATE INDEX IF NOT EXISTS idx_scheduled_due ON scheduled_events(world_id, due_at, status);
+CREATE INDEX IF NOT EXISTS idx_messages_sequence ON messages(world_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(world_id, channel, sequence);
+CREATE INDEX IF NOT EXISTS idx_outbox_retry ON outbox(status, next_attempt_at);
+CREATE INDEX IF NOT EXISTS idx_stream_sequence ON stream_events(world_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_turns_request ON turns(world_id, request_id);
+CREATE INDEX IF NOT EXISTS idx_events_turn ON events(world_id, turn_id);

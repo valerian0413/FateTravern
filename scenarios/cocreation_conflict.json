@@ -1,0 +1,8 @@
+{
+  "name": "共创船长冲突",
+  "preset_id": "sky-islands-v1",
+  "actions": [
+    {"request_id": "co-1", "text": "我想这里有一位认识我父亲的船长", "mode_hint": "共创"}
+  ],
+  "notes": "冲突时应返回修改建议并等待确认"
+}

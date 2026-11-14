@@ -1,0 +1,7 @@
+{
+  "name": "浮空港口观察飞艇",
+  "preset_id": "sky-islands-v1",
+  "actions": [
+    {"request_id": "sky-1", "text": "我看看有哪些飞艇", "mode_hint": "行动"}
+  ]
+}

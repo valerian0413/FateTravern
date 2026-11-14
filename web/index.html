@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FateTravern</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">FateTravern</div>
+    <nav class="page-nav">
+      <button type="button" data-page="guide">使用说明</button>
+      <button type="button" data-page="create">创建世界</button>
+      <button type="button" data-page="worlds">世界档案</button>
+      <button type="button" data-page="play">叙事交互</button>
+    </nav>
+    <div id="status" class="status" aria-live="polite"></div>
+  </header>
+
+  <section id="guide-page" class="page">
+    <div class="intro">
+      <small>GUIDE / 使用说明</small>
+      <h1>先知道这是什么，再开始冒险</h1>
+      <p>FateTravern 是跑在你自己电脑上的单人跑团。主持人由大模型担任，你用自然语言玩。</p>
+    </div>
+    <div class="demo-shelf">
+      <h2>先体验一场现成的冒险</h2>
+      <p>演示里已经写好世界和角色。开始后会复制一份新存档，原来的演示不会被改掉。</p>
+      <div id="guide-demo-list" class="demo-list"></div>
+    </div>
+    <div class="guide">
+      <h2>它在做什么</h2>
+      <ul>
+        <li>创建世界时，把背景、超凡、货币、交通等收成一份可以修改的设定表。你确认之后，这些内容才写入存档。</li>
+        <li>创建角色时使用简化的 Fate：两个形象（高概念、自由形象），十九项技能里一个 +2、两个 +1，一条压力轨（1 / 2 / 3），以及轻微、中度、严重伤痕（2 / 4 / 6）。退让可获得命运点。初始没有绝技。</li>
+        <li>进入冒险后有两个窗口。「旅途见闻」只显示已经发生的行动和世界的直接回应。另一边用来和主持人说话：问规则、商量计划，或声明行动。</li>
+        <li>讨论只用来问规则和商量计划。游戏时间在你声明行动之后才前进，也只有行动才可能掷骰。</li>
+        <li>你临时提出的新设定会先经过审核。和已有设定冲突时，主持人给出修改建议，你点头之后才写进世界。</li>
+      </ul>
+
+      <h2>怎样写提示词</h2>
+      <p>一句短话就够。你负责决定要什么，主持人负责把场面和设定补全。含糊的地方，主持人会先追问。</p>
+
+      <h3>创建世界</h3>
+      <p>不必先写完一整本设定集。讲清你在意的几件事，其余空白会进表格，你可以再改。比较有用的信息是：</p>
+      <ul>
+        <li>这是什么样的地方，气氛如何</li>
+        <li>有没有超凡。有的话，写来源、限制和代价；没有的话，直接说没有</li>
+        <li>钱叫什么，大概能买到什么</li>
+        <li>人怎么从一个地方到另一个地方，要多久，危不危险</li>
+        <li>开场时玩家站在哪里</li>
+      </ul>
+      <p class="example">靠码头的石城，没有魔法。货币是铜贝，一枚铜贝买一顿简餐。城里走路，出城靠河船，上行要一整天，沿途有盗匪。</p>
+
+      <h3>创建角色</h3>
+      <p>说你是谁、为什么出现在开场、擅长什么。技能不必自己算完，说清经历之后，主持人会按规则填进表格。</p>
+      <p class="example">退役的河船领航员，来找失踪的弟弟。水性好，认得出天气，不太会说话。</p>
+
+      <h3>冒险进行中</h3>
+      <ul>
+        <li>想问规则或商量计划，直接问。例如：这里的铜贝够不够住一晚？</li>
+        <li>想让事情发生，用「我」写出具体行动。例如：我把船拴在栈桥上，先看布告板。</li>
+        <li>遇到建议选项可以点，也可以自己写一句。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="create-page" class="page" hidden>
+    <div class="intro" id="creation-intro">
+      <small>CREATE / 创建冒险</small>
+      <h1>世界书架</h1>
+      <p>选择预设、复用已保存的世界设定，或从一个新想法开始。</p>
+    </div>
+    <section id="workshop"></section>
+  </section>
+
+  <section id="worlds-page" class="page" hidden>
+    <div class="intro">
+      <small>CHRONICLES / 世界档案</small>
+      <h1>回到一段冒险</h1>
+      <p>想先玩现成的一场，从演示开始。下面是你已经创建的存档，新的世界从「创建世界」开始。</p>
+    </div>
+    <div class="demo-shelf">
+      <h2>演示</h2>
+      <div id="world-demo-list" class="demo-list"></div>
+    </div>
+    <p id="archive-status" role="status"></p>
+    <aside id="world-picker" class="world-picker"></aside>
+  </section>
+
+  <div id="play-page" hidden>
+    <aside class="character-card">
+      <small>ADVENTURER / 角色档案</small>
+      <h2 id="character-name">尚未选择角色</h2>
+      <div class="vital"><span>血量</span><strong id="hp">3 / 3</strong></div>
+      <div class="vital"><span>压力</span><strong id="stress">3 / 3</strong></div>
+      <div id="fate-card"></div>
+      <h3>技能</h3>
+      <ul id="skills"><li>选择世界后显示</li></ul>
+      <h3>随身物品</h3>
+      <ul id="items"><li>暂无物品</li></ul>
+    </aside>
+    <main class="panels">
+      <section class="panel narrative-panel" aria-label="主叙事">
+        <h1>旅途见闻 <small>游戏内叙事 · 只读</small></h1>
+        <div id="narrative" class="messages narrative"></div>
+      </section>
+      <section class="panel interaction-panel" aria-label="交互">
+        <h1>与主持人交谈</h1>
+        <section id="encounter" class="encounter" aria-live="polite" hidden></section>
+        <div id="interaction" class="messages interaction"></div>
+        <div id="proposal" class="proposal" hidden></div>
+        <div id="waiting" class="waiting" hidden role="status" aria-live="polite">
+          <span class="spinner" aria-hidden="true"></span><span>主持人正在描绘世界…</span>
+        </div>
+        <form id="composer" class="composer">
+          <textarea aria-label="向主持人发送消息" id="input" rows="3" placeholder="输入讨论、行动或共创提案…" maxlength="16000"></textarea>
+          <div class="composer-note">直接描述行动、询问规则，或提出你的故事想法</div>
+          <div class="actions">
+            <button type="submit" id="send">发送</button>
+            <button type="button" id="execute-action" hidden disabled>执行这个行动</button>
+          </div>
+        </form>
+      </section>
+    </main>
+    <nav class="mobile-tabs" aria-label="面板切换">
+      <button type="button" data-tab="narrative" class="active">主叙事</button>
+      <button type="button" data-tab="interaction">交互</button>
+    </nav>
+  </div>
+
+  <script type="module" src="/static/main.js"></script>
+</body>
+</html>

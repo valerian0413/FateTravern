@@ -1,0 +1,18 @@
+{
+  "preset_id": "xuan-yun-hai-v1",
+  "name": "悬云海",
+  "setting": "预设壳，详细设定待补充。",
+  "opening_intent": "",
+  "ruleset_id": "four-dice-v1",
+  "player": {
+    "name": "旅人",
+    "identity": "预设壳，角色待补充。",
+    "skills": {},
+    "resources": {
+      "hp": 3,
+      "stress": 3
+    }
+  },
+  "places": [],
+  "facts": []
+}

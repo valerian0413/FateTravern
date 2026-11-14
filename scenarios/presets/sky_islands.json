@@ -1,0 +1,161 @@
+{
+  "preset_id": "sky-islands-v1",
+  "name": "浮空群岛",
+  "setting": "世界是一个浮空群岛，人类活动较少，只有少量探索者乘坐飞艇穿梭在空岛各处，进行探索、冒险和贸易。",
+  "opening_intent": "我来到空岛后的第一站，是一个建立在小型浮空岛上的贸易据点。我刚来到空中港口，会发现什么呢？",
+  "ruleset_id": "four-dice-v1",
+  "player": {
+    "name": "初行的小剑士",
+    "identity": "一个刚开始冒险的小剑士，擅长简单剑术，对自然知识略有了解。",
+    "skills": {
+      "剑术": 2,
+      "自然知识": 1
+    },
+    "resources": {
+      "hp": 3,
+      "stress": 3
+    }
+  },
+  "places": [
+    {
+      "temp_id": "new:sky-port",
+      "name": "贸易据点空港",
+      "attributes": {
+        "description": "小型浮空岛上的空中港口"
+      }
+    }
+  ],
+  "facts": [
+    {
+      "temp_id": "new:fact-arrived",
+      "subject_temp_id": "new:sky-port",
+      "predicate": "player_arrival",
+      "value": "玩家已抵达小型浮空岛贸易据点的空中港口，这是其冒险的第一站。",
+      "disclosure": "public"
+    }
+  ],
+  "world_book": {
+    "schema_version": 1,
+    "name": "浮空群岛",
+    "skills": [
+      "学术",
+      "运动",
+      "盗窃",
+      "人脉",
+      "工匠",
+      "欺瞒",
+      "驾驶",
+      "同理",
+      "战斗",
+      "调查",
+      "传说",
+      "感知",
+      "体魄",
+      "挑弄",
+      "亲善",
+      "资源",
+      "射击",
+      "隐匿",
+      "意志"
+    ],
+    "sections": {
+      "background": [
+        {
+          "id": "background",
+          "text": "世界是一个浮空群岛，人类活动较少，只有少量探索者乘坐飞艇穿梭在空岛各处，进行探索、冒险和贸易。",
+          "visibility": "public",
+          "status": "proposed",
+          "mutability": "evolving"
+        }
+      ],
+      "tone": [
+        {
+          "id": "tone",
+          "text": "以探索、冒险和贸易为主，未知与发现并存。",
+          "visibility": "public",
+          "status": "proposed",
+          "mutability": "evolving"
+        }
+      ],
+      "geography": [
+        {
+          "id": "geography",
+          "text": "浮空岛散布云海，开场位于小型空岛的贸易空港，远方岛屿留待探索。",
+          "visibility": "public",
+          "status": "proposed",
+          "mutability": "evolving"
+        }
+      ],
+      "supernatural": [
+        {
+          "id": "supernatural",
+          "text": "浮空矿石使岛屿悬浮；矿石离开矿脉后逐渐失去浮力，不能无限开采。其他超凡现象留待共同设定。",
+          "visibility": "public",
+          "status": "proposed",
+          "mutability": "evolving"
+        }
+      ],
+      "species": [
+        {
+          "id": "species",
+          "text": "已知居民以人类为主，其他智慧物种暂未确定。",
+          "visibility": "public",
+          "status": "proposed",
+          "mutability": "evolving"
+        }
+      ],
+      "factions": [
+        {
+          "id": "factions",
+          "text": "空港行会维护码头、登记来船并协调贸易纠纷。",
+          "visibility": "public",
+          "status": "proposed",
+          "mutability": "evolving",
+          "name": "空港行会"
+        }
+      ],
+      "currency": [
+        {
+          "id": "currency",
+          "text": "铜币为基础单位，10 铜币兑换 1 银币；一顿简餐约 2 铜币，普通旅店一晚约 5 铜币。",
+          "visibility": "public",
+          "status": "proposed",
+          "mutability": "evolving",
+          "name": "铜币"
+        }
+      ],
+      "transport": [
+        {
+          "id": "transport",
+          "text": "岛内步行；邻岛间搭乘飞艇约半日，普通船票约 1 银币，航路可能遭遇强风与浮空碎石。",
+          "visibility": "public",
+          "status": "proposed",
+          "mutability": "evolving"
+        }
+      ],
+      "law": [
+        {
+          "id": "law",
+          "text": "空港禁止盗窃和无故持械伤人，由行会守卫执法；外岛规则尚待探索。",
+          "visibility": "public",
+          "status": "proposed",
+          "mutability": "evolving"
+        }
+      ],
+      "open_questions": [
+        {
+          "id": "open_questions",
+          "text": "云海深处有什么？浮空矿脉为何逐渐衰减？",
+          "visibility": "public",
+          "status": "open",
+          "mutability": "evolving"
+        }
+      ]
+    },
+    "initial_scene": {
+      "name": "贸易据点空港",
+      "description": "小型浮空岛上的空中港口，飞艇停靠在木制栈桥旁，商贩与探索者穿行其间。",
+      "opening": "我抵达空港，观察周围的环境。"
+    }
+  }
+}
