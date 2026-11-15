@@ -2,8 +2,9 @@ import { mountWorkshop } from './components/workshop.js';
 import { request, sendInteraction, confirmProposal, rejectProposal, subscribe } from './api.js';
 import { reduce, getPendingRequest, savePendingRequest, rememberMessage } from './state.js';
 import { renderWorlds } from './components/world-picker.js';
-import { renderHistory, appendCommittedTurn } from './components/narrative.js';
-import { renderMessages, setBusy, showError, showStreaming, clearStreaming } from './components/interaction.js';
+import { renderHistory, streamNarrative } from './components/narrative.js';
+import { renderMessages, setBusy, showError, streamInteraction } from './components/interaction.js';
+import { clearDraftText, resetTranscript } from './components/transcript.js';
 import { renderProposal } from './components/proposal.js';
 
 let refreshWorkshopAfterDelete;
@@ -13,6 +14,7 @@ let state = {
   worldId: null,
   messages: { interaction: [], narrative: [] },
   seenMessageIds: new Set(),
+  finishedRequests: new Set(),
   lastSequence: 0,
   modeHint: 'auto',
   suggestedAction: null,
@@ -94,8 +96,8 @@ async function deleteWorld(world) {
       state.stage = null;
       state.suggestedAction = null;
       state.messages = { interaction: [], narrative: [] };
-      renderHistory(els.narrative, []);
-      renderMessages(els.interaction, [], onChoose);
+      resetTranscript(els.narrative);
+      resetTranscript(els.interaction);
       renderProposal(els.proposal, null, {});
       els.execute.hidden = true;
       els.execute.disabled = true;
@@ -170,15 +172,26 @@ async function onPreparePreset(presetId) {
 
 async function selectWorld(id) {
   const startId = 'opening-v2';
-  if (state.worlds.find(world => world.id === id)?.phase === 'prepared') {
-    await request(`/worlds/${id}/start`, { request_id: startId }, startId);
+  const prepared = state.worlds.find(world => world.id === id)?.phase === 'prepared';
+  if (prepared) {
+    els.status.textContent = '正在生成开场…';
+    try {
+      await request(`/worlds/${id}/start`, { request_id: startId }, startId);
+    } catch (error) {
+      els.status.textContent = error.message;
+      return;
+    }
+    state.worlds = state.worlds.map(world => world.id === id ? { ...world, phase: 'playing' } : world);
   }
   if (state.unsubscribe) state.unsubscribe();
+  resetTranscript(els.narrative);
+  resetTranscript(els.interaction);
   state = {
     ...state,
     worldId: id,
     messages: { interaction: [], narrative: [] },
     seenMessageIds: new Set(),
+    finishedRequests: new Set(),
     lastSequence: 0,
     stage: null,
     suggestedAction: null,
@@ -190,8 +203,8 @@ async function selectWorld(id) {
   ]);
   interaction.forEach((m) => { state = rememberMessage(state, m); });
   narrative.forEach((m) => { state = rememberMessage(state, m); });
-  renderMessages(els.interaction, state.messages.interaction, onChoose);
-  renderHistory(els.narrative, state.messages.narrative);
+  renderMessages(els.interaction, state.messages.interaction, onChoose, { animate: prepared });
+  renderHistory(els.narrative, state.messages.narrative, { animate: prepared });
 
   const pending = getPendingRequest(id);
   if (pending) {
@@ -240,33 +253,28 @@ async function onSend({ text, modeHint, replyTo, combatDescription }) {
 
 async function onEvent(event) {
   if (event.id && event.id <= state.lastSequence) return;
-  state = reduce(state, event);
-  setBusy(state.stage, { sendBtn: els.send, actionBtn: els.execute, statusEl: els.status });
-
   if (event.type === 'assistant.delta') {
-    const text = event.payload?.text || '';
-    if (!text) return;
-    const narrative = event.payload.channel === 'narrative';
-    showStreaming(narrative ? els.narrative : els.interaction, text, narrative ? '主持人 · 世界回应' : '主持人');
+    const { text, channel } = event.payload || {};
+    if (!text || state.finishedRequests.has(event.request_id)) return;
+    if (channel === 'narrative') streamNarrative(els.narrative, event.request_id, text);
+    if (channel === 'interaction') streamInteraction(els.interaction, event.request_id, text, onChoose);
     const waiting = document.getElementById('waiting');
     if (waiting) waiting.hidden = true;
     return;
   }
+  state = reduce(state, event);
+  setBusy(state.stage, { sendBtn: els.send, actionBtn: els.execute, statusEl: els.status });
+  if (['interaction.completed', 'turn.committed', 'request.failed'].includes(event.type)) {
+    state.finishedRequests.add(event.request_id);
+  }
+  if (event.type === 'progress') state.finishedRequests.delete(event.request_id);
 
-  if (event.type === 'check.announced') await refreshInteraction();
+  if (['action.acknowledged', 'check.announced', 'proposal.ready'].includes(event.type)) await refreshInteraction();
 
   if (event.type === 'interaction.completed') {
-    await refreshInteraction();
+    await refreshInteraction({ finalId: event.payload.message_id, finalRequest: event.request_id });
     state.suggestedAction=null;
     els.execute.disabled=true; els.execute.hidden=true;
-    const msg = {
-      id: event.payload.message_id,
-      channel: 'interaction',
-      author: 'gm',
-      text: event.payload.text,
-    };
-    state = rememberMessage(state, msg);
-    renderMessages(els.interaction, state.messages.interaction, onChoose);
     if (event.payload.suggested_action) {
       state.suggestedAction = event.payload.suggested_action;
       els.execute.disabled = false;
@@ -295,11 +303,8 @@ async function onEvent(event) {
   if (event.type === 'turn.committed') {
     await refreshCharacter();
     const messages = await readMessages(state.worldId, 'narrative', state.messages.narrative.at(-1)?.sequence || 0);
-    messages.forEach((m) => {
-      const before = state.seenMessageIds.size;
-      state = rememberMessage(state, m);
-      if (state.seenMessageIds.size > before) appendCommittedTurn(els.narrative, m);
-    });
+    messages.forEach(m => { state = rememberMessage(state, m); });
+    renderHistory(els.narrative, state.messages.narrative, { animate: true, finalRequest: event.request_id });
     // Also refresh interaction player line already stored server-side
     await refreshInteraction();
     savePendingRequest({ worldId: state.worldId, clear: true });
@@ -307,8 +312,8 @@ async function onEvent(event) {
   }
 
   if (event.type === 'request.failed') {
-    clearStreaming(els.interaction);
-    clearStreaming(els.narrative);
+    clearDraftText(els.interaction, event.request_id);
+    clearDraftText(els.narrative, event.request_id);
     showError(els.interaction, { message: event.payload?.error || '请求失败' }, async()=>{await request(`/worlds/${state.worldId}/requests/${event.request_id}/retry`,{},event.request_id);});
   }
 }
@@ -345,13 +350,13 @@ async function readMessages(worldId, channel, after = 0) {
   return messages;
 }
 
-async function refreshInteraction(){
+async function refreshInteraction(options){
  const choices = state.messages.interaction.find(m => m.choices_active);
  const after = (choices?.sequence || state.messages.interaction.at(-1)?.sequence || 1) - 1;
  const rows = await readMessages(state.worldId, 'interaction', after);
  rows.forEach(m=>{state=rememberMessage(state,m)});
  state.messages.interaction.sort((a,b)=>(a.sequence||0)-(b.sequence||0));
- renderMessages(els.interaction,state.messages.interaction,onChoose);
+ renderMessages(els.interaction,state.messages.interaction,onChoose, { animate: true, ...options });
 }
 async function refreshCharacter(){
  const view=await request(`/worlds/${state.worldId}/view`,undefined,undefined,'GET');
@@ -359,7 +364,6 @@ async function refreshCharacter(){
  const c=view.character;
  const fate=document.getElementById('fate-card');fate.replaceChildren();
  document.querySelectorAll('.character-card .vital').forEach(el=>el.hidden=!!c.stress_tracks);
- if(c.stress_tracks){const p=document.createElement('p');p.textContent=`货币余额：${c.resources.coins ?? 0}（单位见世界书）`;fate.append(p);}
  for(const a of c.aspects||[]){const p=document.createElement('p');p.textContent=(a.kind==='high_concept'?'高概念：':'自由形象：')+a.text;fate.append(p);}
  if (c.stress_tracks?.unified) {
    const pressure = document.createElement('p');
@@ -381,7 +385,11 @@ async function refreshCharacter(){
    skills.append(item);
  }
  const items=document.getElementById('items');items.replaceChildren();
- for(const name of c.inventory?.length?c.inventory:['暂无物品']){const li=document.createElement('li');li.textContent=name;items.append(li)}
+ for (const item of c.inventory?.length ? c.inventory : [{ name: '暂无物品' }]) {
+   const li = document.createElement('li');
+   li.textContent = item.currency || item.quantity > 1 ? `${item.name} × ${item.quantity}` : item.name;
+   items.append(li);
+ }
 }
 
 function renderEncounter(root, encounter) {

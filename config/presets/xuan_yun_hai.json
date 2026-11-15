@@ -1,8 +1,8 @@
 {
   "preset_id": "xuan-yun-hai-v1",
   "name": "悬云海",
-  "setting": "预设壳，详细设定待补充。",
-  "opening_intent": "",
+  "setting": "乘飞艇深入悬云海，探访浮空岛、寻找前辈的宝藏、狩猎怪物。冒险从雷云层中的一场云鲨袭击开始。",
+  "opening_intent": "你在一艘驶往悬云岛的飞艇上。雷声压过了风声，闪电照亮船舷外的云雾。一只云鲨贴着飞艇游过，在前方掉头。下一道闪电亮起时，它正朝船身冲来。你打算怎么护住这艘飞艇？",
   "ruleset_id": "four-dice-v1",
   "player": {
     "name": "旅人",
@@ -13,6 +13,260 @@
       "stress": 3
     }
   },
-  "places": [],
-  "facts": []
+  "places": [
+    {
+      "temp_id": "new:airship-in-thunderclouds",
+      "name": "雷云层中的飞艇",
+      "attributes": {
+        "description": "这艘飞艇正穿过雷云层，驶往悬云岛。云雾遮住了船外的视野，闪电不时照亮船身。一只云鲨在飞艇附近游弋，正准备攻击飞艇。"
+      }
+    }
+  ],
+  "facts": [],
+  "world_book": {
+    "schema_version": 1,
+    "name": "悬云海",
+    "sections": {
+      "background": [
+        {
+          "id": "bg_first_landing",
+          "text": "许久以前，一艘残破飞艇冲出雷云层，踏足了悬云海首个落脚点风栈岛。如今这浮空岩群仍是冒险者起始的坐标，无数飞艇自此出发飞向云海深处，探索不同的风光，寻找前辈留下的宝藏，狩猎怪物，然后饱餐一顿。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "fixed"
+        },
+        {
+          "id": "bg_main_loop",
+          "text": "悬云海的冒险者多以狩猎云海怪物为生：接下委托、追踪猎物、采集素材，再把素材卖给商队或工坊，换钱、修船、添装备。狩猎归来的怪物食材常被做成热气腾腾的料理，围桌开饭是冒险者之间最热闹的庆功方式。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        }
+      ],
+      "tone": [
+        {
+          "id": "tone_light",
+          "text": "轻松的日系冒险：危险常有，但少有阴郁绝望；伙伴间的打趣、热腾腾的饭食和收获的喜悦贯穿旅程。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "tone_ingredient_hook",
+          "text": "冒险中格外关注新奇的魔法食材：每到一处新环境，故事常从一道没见过的云海食材、一锅奇特料理或一张食材委托展开，由食材牵出当地的风土、人物与麻烦。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        }
+      ],
+      "geography": [
+        {
+          "id": "geo_thunder_cloud_layer",
+          "text": "雷云层位于悬云海最底部，下方不断升腾的湿热气流与上方沉降的冷气在此相遇，形成一片雷云堆积的危险空域。层中生活着以雷电为能量源的特化藻类，以及依附这些雷云藻群生活的浮空鱼类。无论从地面来到悬云海，都要冒险穿过雷云层。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "geo_thunder_algae",
+          "text": "雷云藻是扎根在浓密雷云中的巨型藻类，以吸收雷元素代替光合作用，能长到数百米，飞艇船员常称它们为“雷母的绸缎”。它们结出的果实发出蓝紫光，摘取后呈淡蓝色，富含糖类，口感如果冻般柔滑，并带有刺激感，被称为“雷母的黑珍珠”，是雷云层中许多小型生物的主食，也常被补给短缺的飞艇队员当作临时主食。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "geo_cloud_food_chain",
+          "text": "雷云层的浮空鱼类以雷云藻群及其果实为食，云鲨则处于这条食物链上层，以浮空鱼类为食，偶尔会因追逐鱼群而跟飞艇纠缠。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "geo_windpier_island",
+          "text": "风栈岛是悬云海最热闹的落脚点之一，也是冒险者出发的起始坐标：市集沿栈道铺开，商队与工坊在此收购素材、兜售装备，料理摊林立，冒险者带回的新鲜怪物食材常在天黑前就变成一道道热菜。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        }
+      ],
+      "supernatural": [
+        {
+          "id": "sup_magic_exists",
+          "text": "悬云海存在魔法。魔法并非人人可用的天赋，而是可以通过学习与研究掌握的力量。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "sup_monster_material_magic",
+          "text": "魔法的核心媒介是怪物素材：云海怪物的骨、鳞、羽、腺体等蕴含的超凡之力，被工匠制成法器、符文或弹药，是施法与强化装备的主要来源。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "sup_feast_boon",
+          "text": "食用以超凡怪物为素材烹制的佳肴，能让人在短时间内获得或增强超凡能力——不同的怪物料理带来不同的效果，效果持续有限，冷却与搭配各有讲究。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "sup_training_research",
+          "text": "人也能靠自身锻炼获得战斗能力，或通过魔法研究习得施法能力；这类能力稳定持久，但与料理带来的爆发式增益方向不同。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        }
+      ],
+      "species": [
+        {
+          "id": "spc_humans_majority",
+          "text": "悬云海的人口以人类为主，市集、飞艇与工坊里最常见的都是人类面孔。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "spc_bloodline_folk",
+          "text": "除人类外，还有一部分人带有其他动物的血脉，身上留有猫耳、狼尾之类的特征。血脉给予他们敏锐的感官或体魄等长处，但在人群中并不算多见。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "spc_elves_dwarves",
+          "text": "云海中也生活着精灵与矮人等族裔：精灵多与云海草木和古老知识相关，矮人则以手艺和锻造见长，常在工坊与商队间往来。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "spc_relations_open",
+          "text": "各族裔之间的相处方式、偏见与习俗尚未确定。",
+          "visibility": "public",
+          "status": "open",
+          "mutability": "open"
+        }
+      ],
+      "factions": [
+        {
+          "id": "fac_adventurer_guild",
+          "text": "悬云海最普及的势力，负责发布委托、登记冒险者、评定战果与信誉。冒险者接活、交素材、领取报酬大多经由协会，它在各落脚点设有分会，也是新手最常打交道的组织。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving",
+          "name": "冒险者协会"
+        },
+        {
+          "id": "fac_merchant_guild",
+          "text": "“商会”并非一个紧密统一的组织，而是各类商会与商队的统称。它们各自掌握航线、货源与买卖渠道，收购怪物素材、兜售装备补给，与工坊和冒险者往来密切；彼此之间有合作也有竞争，价格与航线走向很大程度上影响着云海上的生计。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving",
+          "name": "商会"
+        },
+        {
+          "id": "fac_scholars",
+          "text": "“学者组织”同样不是一个紧密统一的团体，而是各类学派与研究者的统称。他们各自专注云海生态、古代遗迹、魔法等不同领域，雇佣冒险者采集样本、勘探遗迹，也出售魔法知识与法器图纸；学派之间时有交流，也常有争论与门户之见。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving",
+          "name": "学者组织"
+        },
+        {
+          "id": "fac_relations_open",
+          "text": "三大势力之间的具体关系、竞争与暗流尚未确定。",
+          "visibility": "public",
+          "status": "open",
+          "mutability": "open",
+          "name": "势力关系"
+        }
+      ],
+      "currency": [
+        {
+          "id": "cur_tri_metal",
+          "text": "主要货币为金币、银币、铜币，兑换比为 1 金币 = 10 银币 = 100 铜币，与地面上的货币通用。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "fixed",
+          "name": "金币·银币·铜币"
+        },
+        {
+          "id": "cur_price_basics",
+          "text": "大致物价：5 铜币一碗最简陋的热汤；20 铜币一顿饱饭；5 银币（=50 铜币）一顿很好的饭。住宿方面，3 银币一晚简陋通铺，10 银币一晚单间。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving",
+          "name": "常见物价"
+        }
+      ],
+      "transport": [
+        {
+          "id": "tra_large_airship",
+          "text": "远距离交通依靠大型飞艇，可载几十到上百人。飞艇以可燃烧的怪物素材为能源驱动，航线多由商会与协会掌握。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "tra_small_airship",
+          "text": "短距离出行多用小型飞艇，载 2—5 人，灵活轻便，是小队冒险者最常用的代步工具。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "tra_tamed_beasts",
+          "text": "短途也可骑乘或役使驯养的浮空野兽，例如云鲸；具体载人数与舒适程度因种类而异，驯养与照料本身也是门手艺。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        }
+      ],
+      "law": [
+        {
+          "id": "law_guild_compact",
+          "text": "悬云海没有统一的成文律法，日常秩序以冒险者协会的共同约定为准：登记、接委托、分配战果与结算报酬都按协会的规矩来，各落脚点的分会负责调解纠纷。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "law_major_incidents",
+          "text": "若发生恶性事件，由协会派出资深冒险者处理；他们既是调查者也是执行者，处置结果会记入协会的信誉记录。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        }
+      ],
+      "open_questions": []
+    },
+    "initial_scene": {
+      "name": "雷云层中的飞艇",
+      "description": "这艘飞艇正穿过雷云层，驶往悬云岛。云雾遮住了船外的视野，闪电不时照亮船身。一只云鲨在飞艇附近游弋，正准备攻击飞艇。",
+      "opening": "你在一艘驶往悬云岛的飞艇上。雷声压过了风声，闪电照亮船舷外的云雾。一只云鲨贴着飞艇游过，在前方掉头。下一道闪电亮起时，它正朝船身冲来。你打算怎么护住这艘飞艇？"
+    },
+    "skills": [
+      "学术",
+      "运动",
+      "盗窃",
+      "人脉",
+      "工匠",
+      "欺瞒",
+      "驾驶",
+      "同理",
+      "战斗",
+      "调查",
+      "传说",
+      "感知",
+      "体魄",
+      "挑弄",
+      "亲善",
+      "资源",
+      "射击",
+      "隐匿",
+      "意志"
+    ]
+  }
 }

@@ -11,5 +11,5 @@ options 为空或含 2—4 条可以原样发送的具体答案。每轮最多�
 
 角色阶段（stage=character）
 - 世界已保存。将来历、动机、特质整理为可编辑的完整候选卡。回复只简述关键变更，有必要时问一个贴合开场的问题，并提供具体选项。
-- document 包含 name、background、motivation、skill_reason、aspects（依次为 {"kind":"high_concept","text":"…"} 和 {"kind":"free","text":"…"}）、skills、stunts=[]、equipment（名称列表）和 money（非负整数）。技能取自 book.skills，恰好一个 +2、两个 +1，其余为 0。压力和后果由程序计算。
-- 装备和金钱符合世界设定。没有货币设定时，初始金钱可用 0。形象只能在直接相关时提供行动资格或 ±1 情境修正。角色背景需要改变已保存的世界设定时，在 conflicts 中说明，候选卡给出符合现有设定的版本。
+- document 包含 name、background、motivation、skill_reason、aspects（依次为 {"kind":"high_concept","text":"…"} 和 {"kind":"free","text":"…"}）、skills、stunts=[]、equipment。随身物品可以是名称或 {"name":"物品名","quantity":1}，货币按不同币种写入 equipment，例如 {"name":"铜币","quantity":5}。技能取自 book.skills，恰好一个 +2、两个 +1，其余为 0。压力和后果由程序计算。
+- 装备和币种符合世界设定。没有货币设定时可以不发钱。若原角色草稿尚有旧字段 money，按世界的基础币种转入 equipment 后移除 money。形象只能在直接相关时提供行动资格或 ±1 情境修正。角色背景需要改变已保存的世界设定时，在 conflicts 中说明，候选卡给出符合现有设定的版本。

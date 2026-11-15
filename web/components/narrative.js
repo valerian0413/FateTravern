@@ -1,21 +1,21 @@
-export function renderHistory(root, messages) {
-  root.textContent = '';
-  (messages || []).forEach((msg) => appendCommittedTurn(root, msg));
-}
+import { renderTranscript, streamTranscript } from './transcript.js';
 
-export function appendCommittedTurn(root, turnOrMessage) {
-  root.querySelector('[data-streaming]')?.remove();
-  const msg = turnOrMessage;
-  if (!msg || !msg.text) return;
-  const el = document.createElement('article');
-  el.className = `msg ${msg.author || 'gm'}`;
+function narrativeRow(message) {
+  const element = document.createElement('article');
+  element.className = `msg ${message.author || 'gm'}`;
   const role = document.createElement('span');
   role.className = 'role';
-  role.textContent = msg.author === 'player' ? '你的行动' : '主持人 · 世界回应';
+  role.textContent = message.author === 'player' ? '你的行动' : '主持人 · 世界回应';
   const body = document.createElement('div');
-  body.textContent = msg.text;
-  el.appendChild(role);
-  el.appendChild(body);
-  root.appendChild(el);
-  root.scrollTop = root.scrollHeight;
+  body.className = 'message-text';
+  element.append(role, body);
+  return { element, body };
+}
+
+export function renderHistory(root, messages, options) {
+  renderTranscript(root, messages, narrativeRow, options);
+}
+
+export function streamNarrative(root, requestId, text) {
+  streamTranscript(root, requestId, text, narrativeRow);
 }

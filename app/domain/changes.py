@@ -9,6 +9,7 @@ from dataclasses import replace
 
 from app.domain.stress import CAPACITIES, stress_boxes
 from app.domain.errors import ValidationError
+from app.domain.inventory import currency_names, currency_stack, item_stack
 from app.domain.types import (
     CHANGE_OPS,
     CandidateBatch,
@@ -98,6 +99,22 @@ def stabilize_changes(changes: list[dict], world_id: str, turn_id: str, *,
     return result
 
 
+def _currency_change(change, snapshot):
+    """Resolve denomination and quantity for both current and pre-migration plans."""
+    names = currency_names(snapshot.world)
+    legacy = change['op'] == 'resource_delta'
+    name = names[-1] if legacy else change.get('currency')
+    expected = change.get('expected_value' if legacy else 'expected_quantity')
+    delta = change.get('delta')
+    if name not in names or type(expected) is not int or type(delta) is not int:
+        raise ValidationError('需要已知币种、原数量和整数变动量')
+    stack = currency_stack(snapshot.world, snapshot.entities, name)
+    quantity = stack.attributes['quantity'] if stack else 0
+    if expected != quantity or quantity + delta < 0:
+        raise ValidationError('货币数量已变化或余额不足')
+    return name, stack, quantity + delta
+
+
 def validate_changes(changes: list[dict], snapshot: Snapshot) -> list[Issue]:
     issues: list[Issue] = []
     known = set(snapshot.entities)
@@ -125,6 +142,11 @@ def validate_changes(changes: list[dict], snapshot: Snapshot) -> list[Issue]:
             eid = change.get('entity_id') or change.get('item_id')
             if eid not in known and eid not in snapshot.entities:
                 issues.append(Issue(IssueSeverity.BLOCKING, path, f'未知实体 {eid}', '先注册实体'))
+        elif op == 'currency_delta' or (op == 'resource_delta' and change.get('key') == 'coins'):
+            try:
+                _currency_change(change, snapshot)
+            except ValidationError as exc:
+                issues.append(Issue(IssueSeverity.BLOCKING, path, exc.message, '核对币种和数量'))
         elif op == 'resource_delta':
             resources = snapshot.entities[snapshot.world.player_id].attributes.get('resources', {})
             key = change.get('key')
@@ -187,12 +209,17 @@ def apply_to_copy(snapshot: Snapshot, changes: list[dict], *, source_event_id: s
             # Cross-world refs are prevented by repositories; here reject foreign world_id.
             if change.get('world_id') and change['world_id'] != state.world.id:
                 raise ValidationError('禁止跨世界引用', path='create_entity.world_id')
+            attributes = dict(change.get('attributes') or {})
+            if change['kind'] == EntityKind.ITEM.value:
+                quantity = attributes.get('quantity', 1)
+                if 'currency' in attributes or type(quantity) is not int or quantity < 1:
+                    raise ValidationError('普通物品必须有正整数数量；货币使用 currency_delta')
             state.entities[eid] = Entity(
                 id=eid,
                 world_id=state.world.id,
                 kind=EntityKind(change['kind']),
                 name=change['name'],
-                attributes=dict(change.get('attributes') or {}),
+                attributes=attributes,
                 revision=1,
                 source_event_id=source_event_id,
             )
@@ -261,12 +288,26 @@ def apply_to_copy(snapshot: Snapshot, changes: list[dict], *, source_event_id: s
             if entity.revision != change.get('expected_revision', entity.revision):
                 raise ValidationError('属性修订前置条件不满足', path='set_attribute.expected_revision')
             key = change['key']
+            if key == 'currency' or (entity.attributes.get('currency') and key in ('quantity', 'owner')):
+                raise ValidationError('货币堆叠须使用按币种变更操作', path='set_attribute.key')
+            if entity.kind == EntityKind.ITEM and key == 'quantity':
+                if type(change.get('value')) is not int or change['value'] < 0:
+                    raise ValidationError('物品数量须为非负整数', path='set_attribute.value')
             if state.world.ruleset_id == 'fate-lite-v1' and entity.kind == EntityKind.PLAYER and key in {'skills','aspects','stress_tracks','consequences','stunts','ruleset_id','character_template','resources','hp','stress','fate_points','combat_status'}:
                 raise ValidationError('此角色数据不能通过通用属性操作修改', path='set_attribute.key')
             if entity.attributes.get(key) != change.get('expected'):
                 raise ValidationError('属性前置条件不满足', path='set_attribute.expected')
             entity.attributes[key] = change['value']
             entity.revision += 1
+        elif op == 'currency_delta' or (op == 'resource_delta' and change.get('key') == 'coins'):
+            name, stack, quantity = _currency_change(change, state)
+            if stack:
+                stack.attributes['quantity'] = quantity
+                stack.revision += 1
+            elif quantity:
+                stack = item_stack(state.world, name, quantity, currency=True)
+                stack.source_event_id = source_event_id
+                state.entities[stack.id] = stack
         elif op == 'resource_delta':
             resources = player.attributes.setdefault('resources', {})
             key, delta = change['key'], change['delta']
@@ -279,6 +320,8 @@ def apply_to_copy(snapshot: Snapshot, changes: list[dict], *, source_event_id: s
             item = state.entities[change['item_id']]
             if item.kind != EntityKind.ITEM:
                 raise ValidationError('不是物品', path='transfer_item')
+            if item.attributes.get('currency'):
+                raise ValidationError('收付货币须说明币种和数量', path='transfer_item')
             if item.attributes.get('owner') != change.get('expected_owner'):
                 raise ValidationError('物品归属前置条件不满足', path='transfer_item')
             item.attributes['owner'] = change['to']

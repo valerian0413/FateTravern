@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 import aiosqlite
 
 from app.storage.dbutil import fetchall
+from app.domain.inventory import unpack_legacy_coins
 from app.domain.types import (
     Channel,
     Entity,
@@ -76,6 +77,7 @@ class WorldRepo:
         entities = {
             e.id: e for e in await EntityRepo(self.db).by_world(world_id)
         }
+        unpack_legacy_coins(world, entities)
         facts = {
             f.id: f for f in await FactRepo(self.db).by_world(world_id)
         }

@@ -6,8 +6,10 @@ import pytest
 from app.application.creation import prepare, start
 from app.bootstrap import build_runtime
 from app.config import Settings
+from app.domain.errors import ModelUnavailable
 from app.domain.types import Intent, IntentKind
 from app.application.turns import ActionCommand
+from app.providers.base import ModelResponse
 from app.storage.repositories import MessageRepo, WorldRepo
 from dataclasses import replace
 
@@ -74,13 +76,32 @@ async def test_sky_port_observe(runtime):
 async def test_opening_idempotent(runtime):
     from app.storage.repositories import EventRepo, TurnRepo
 
+    class Model:
+        async def complete(self, request):
+            assert request.module == 'opening'
+            return ModelResponse({
+                'background': '探索者乘飞艇在浮空群岛之间往来。',
+                'character': '你是刚开始冒险的小剑士。',
+                'scene': '你抵达贸易据点空港，几艘商用飞艇停在栈桥旁。',
+                'question': '你想先做什么？',
+                'options': ['我观察停泊的飞艇', '我向商贩询问空港的情况'],
+            }, '', {})
+
     world = await prepare(runtime, 'sky-islands-v1')
+    with pytest.raises(ModelUnavailable, match='模型不可用'):
+        await start(runtime, world.id, 'opening-v1')
+    assert not await MessageRepo(runtime.db.conn).list(world.id)
+    assert (await WorldRepo(runtime.db.conn).get(world.id)).phase.value == 'prepared'
+
+    runtime.provider = Model()
     first = await start(runtime, world.id, 'opening-v1')
+    runtime.provider = None
     second = await start(runtime, world.id, 'different-request')
     assert first.request_id == second.request_id
     db = runtime.db.conn
     turn = await TurnRepo(db).get_by_request(world.id, first.request_id)
     assert turn.result['kind'] == 'opening'
+    assert len(turn.result['options']) == 2
     assert turn.checkpoint['source'] == 'system'
     messages = await MessageRepo(db).list(world.id)
     assert [(message['channel'], message['author']) for message in messages] == [

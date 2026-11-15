@@ -1,12 +1,13 @@
 """Deterministic action order and effects for one encounter."""
 from __future__ import annotations
 
-from app.rules.combat import absorptions, damage_effects
+from app.rules.combat import absorptions, damage_effects, incapacitating_consequence
 from app.rules.four_dice import FourDice
 
 ROUND_SECONDS = 8
 GOAL_PROGRESS = 3
 CONTESTED = {'attack', 'advance', 'withdraw'}
+OBJECTIVE = 'objective'
 
 
 class EncounterRound:
@@ -37,8 +38,11 @@ class EncounterRound:
                      'domain': action['skill'], 'difficulty': action['difficulty'], 'conditions': []}
         if target:
             challenge.update(attacker_id=actor_id, defender_id=target_id, defense_domain=action['defense_skill'])
-        if action['use_preparation'] and actor.get('prepared'):
+        prepared_target = actor.get('prepared_target')
+        if (action['use_preparation'] and actor.get('prepared')
+                and (not prepared_target or (action['kind'] == 'attack' and prepared_target == target_id))):
             preparation = actor.pop('prepared')
+            actor.pop('prepared_target', None)
             challenge['conditions'].append({'source_id': 'encounter:preparation', 'direction': 'advantage',
                                             'public': True, 'reason': preparation})
             self.tell(f"{actor['name']}利用已经完成的准备「{preparation}」。")
@@ -50,8 +54,14 @@ class EncounterRound:
             challenge['defense_bonus'] = assessment['defense_bonus']
         check_id = f"{self.snapshot.world.id}:{self.request_id}:{len(self.checks)}"
         result = self.rules.resolve(assessment, {'check_id': check_id})
+        decision = {key: action[key] for key in ('kind', 'description', 'skill', 'reach', 'equipment', 'skill_reason')
+                    if key in action}
+        actor['skill_history'] = [*actor.get('skill_history', [])[-2:], decision]
         self.checks.append({**result, 'actor': actor['name'], 'target': target['name'] if target else None,
-                            'purpose': action['kind']})
+                            'purpose': action['kind'],
+                            'skill_reason': action.get('skill_reason'),
+                            'defense_domain': action['defense_skill'] if target else None,
+                            'defense_bonus': assessment.get('defense_bonus')})
         return result
 
     def injury(self, target_id, damage, injury, selection):
@@ -59,6 +69,8 @@ class EncounterRound:
         if selection is None:
             target['status'] = 'out'
         if self.fate:
+            if selection and selection[1] and incapacitating_consequence(injury):
+                injury = '受创后动作受限'
             for effect in damage_effects(target_id, selection, injury):
                 if effect['op'] != 'taken_out' or target_id != self.player_id:
                     effect['op_id'] += f'-{len(self.changes)}'
@@ -79,13 +91,29 @@ class EncounterRound:
         from app.domain.changes import apply_to_copy
         return apply_to_copy(self.snapshot, self.changes).entities[target_id].attributes
 
+    def perform_sequence(self, actor_id, first):
+        previous_succeeded = True
+        for index, step in enumerate([first, *first.get('followups', [])]):
+            if self.state.get('hit') or self.state.get('result'):
+                break
+            if index and not previous_succeeded and step.get('requires_previous_success', True):
+                self.tell(f"前一步未达成，{self.state['units'][actor_id]['name']}未执行后续动作「{step['description']}」。")
+                continue
+            count = len(self.checks)
+            executed = self.perform(actor_id, {k: v for k, v in step.items() if k != 'followups'})
+            previous_succeeded = (self.checks[-1]['success'] if len(self.checks) > count else executed is not False)
+            if self.state['units'][actor_id].get('pending'):
+                break
+            if index < len(first.get('followups', [])) and self.finish():
+                break
+
     def perform(self, actor_id, action):
         state = self.state
         unit = state['units'][actor_id]
         kind = action['kind']
         is_player = actor_id == self.player_id
         if unit['status'] != 'active':
-            return
+            return False
         unit.pop('guard', None)
         if kind != 'continue' and unit.pop('pending', None):
             self.tell(f"{unit['name']}中断了原来的准备。")
@@ -95,27 +123,46 @@ class EncounterRound:
                 pending = unit['pending'] = {'action': action, 'remaining': action['rounds']}
             if not pending:
                 self.tell(f"{unit['name']}没有需要继续的准备。")
-                return
+                return False
             pending['remaining'] -= 1
             detail = pending['action']['description']
             if pending['remaining']:
-                self.tell(f"{unit['name']}开始／继续{detail}，还需 {pending['remaining']} 轮。")
+                verb = '开始' if kind == 'prepare' else '继续'
+                self.tell(f"{unit['name']}{verb}准备「{detail}」，还需 {pending['remaining']} 轮。")
             else:
                 unit.pop('pending')
                 if self.roll(actor_id, pending['action'])['success']:
                     unit['prepared'] = detail
-                    self.tell(f"{unit['name']}完成{detail}，运用这项准备时可获得一次情境加值。")
+                    unit.pop('prepared_target', None)
+                    self.tell(f"{unit['name']}完成准备「{detail}」。实际用到时获得一次情境加值。")
                 else:
                     self.tell(f"{unit['name']}未能完成{detail}。")
             return
 
-        target_id = action['target_id']
+        objective = action['target_id'] == OBJECTIVE
+        target_id = self.player_id if objective else action['target_id']
         target = state['units'].get(target_id)
         if kind == 'guard':
             unit['guard'] = True
             self.tell(f"{unit['name']}专注防守，直到下次行动前防守 +1。")
         elif kind == 'wait':
             self.tell(f"{unit['name']}选择等待：{action['description']}。")
+        elif kind == 'observe':
+            self.tell(f"{unit['name']}观察眼前局势。")
+            if is_player and state['scene_items']:
+                self.tell('你能看到：' + '、'.join(state['scene_items']) + '。')
+        elif kind == 'search':
+            if self.roll(actor_id, action)['success']:
+                self.tell(f"{unit['name']}及时辨认出能派上用场的物品：" + '、'.join(action['search_items']) + '。')
+            else:
+                self.tell(f"{unit['name']}没能在这轮辨认出哪些物品能派上用场。")
+        elif kind == 'study' and target and target['status'] == 'active':
+            if self.roll(actor_id, action)['success']:
+                weakness = action['weakness']
+                unit.update(prepared=weakness, prepared_target=target_id)
+                self.tell(f"{unit['name']}发现{target['name']}的破绽「{weakness}」。利用它攻击该目标时可获得一次情境加值。")
+            else:
+                self.tell(f"{unit['name']}没能看清{target['name']}的破绽。")
         elif kind == 'reposition':
             if is_player:
                 for uid in state['order'][1:]:
@@ -124,8 +171,12 @@ class EncounterRound:
                 unit['distance'] = 'far'
             self.tell(f"{unit['name']}拉开了距离。")
         elif kind == 'approach' and target and target['status'] == 'active':
-            (target if is_player else unit)['distance'] = 'close'
-            self.tell(f"{unit['name']}接近了{target['name']}。")
+            relative = target if is_player else unit
+            if relative['distance'] == 'far':
+                relative['distance'] = 'close'
+                self.tell(f"{unit['name']}接近了{target['name']}。")
+            else:
+                self.tell(f"{unit['name']}仍贴近{target['name']}。")
         elif kind == 'withdraw' and state['kind'] in ('combat', 'negotiation'):
             unit['status'] = 'withdrawn'
             if is_player and self.fate and state['kind'] == 'combat':
@@ -139,9 +190,12 @@ class EncounterRound:
                 self.tell(f"{unit['name']}退出了当前遭遇。")
         elif kind in CONTESTED and target and target['status'] == 'active':
             distance = (target if is_player else unit)['distance']
-            if kind == 'attack' and distance == 'far' and action['skill'] != '射击':
-                self.tell(f"{unit['name']}与{target['name']}距离过远，近攻未能出手。")
-                return
+            if (kind == 'attack' or objective) and distance == 'far':
+                # A saved mid-round plan may predate the explicit reach field.
+                reach = action.get('reach', 'far' if action['skill'] == '射击' else 'close')
+                if reach != 'far':
+                    self.tell(f"{unit['name']}距离过远，这次攻击未能出手。")
+                    return False
             self.tell(f"{unit['name']}尝试{action['description']}。")
             result = self.roll(actor_id, action, target_id)
             damage = result['damage']
@@ -153,8 +207,11 @@ class EncounterRound:
                     return
                 choices = absorptions(self.current_attributes(target_id), damage)
                 if target_id == self.player_id:
+                    by_consequence = {}
+                    for choice in choices:
+                        by_consequence.setdefault(choice[1], choice)
                     state['hit'] = {'target_id': target_id, 'damage': damage, 'injury': action['injury'],
-                                    'choices': choices[:3]}
+                                    'attacker': unit['name'], 'choices': list(by_consequence.values())[:3]}
                     return
                 self.injury(target_id, damage, action['injury'], choices[0] if choices else None)
             elif kind == 'withdraw' and is_player:
@@ -163,16 +220,22 @@ class EncounterRound:
             else:
                 side = 'player' if is_player else 'opponents'
                 state['progress'][side] = min(GOAL_PROGRESS, state['progress'][side] + min(damage, 2))
-                self.tell(f"{unit['name']}取得先机，己方进度达到 {state['progress'][side]}/{GOAL_PROGRESS}。")
-        elif kind in CONTESTED | {'approach'}:
+                goal = state['goal'] if is_player else state['opponent_goal']
+                self.tell(f"{unit['name']}向目标「{goal}」推进至 {state['progress'][side]}/{GOAL_PROGRESS}。")
+        elif kind in CONTESTED | {'approach', 'study'}:
             self.tell(f"{unit['name']}的目标已经离场，这次行动没有执行。")
+            return False
 
     def finish(self):
         state = self.state
+        if state.get('result'):
+            return True
         player = state['units'][self.player_id]
         if player['status'] != 'active':
             state['result'] = 'player_out' if player['status'] == 'out' else 'player_withdrew'
             self.tell('你已离开当前遭遇。')
+            if state['kind'] == 'combat':
+                self.tell(f"你的目标「{state['goal']}」尚未达成。")
         elif not any(u['status'] == 'active' for uid, u in state['units'].items() if uid != self.player_id):
             state['result'] = 'opponents_left'
             self.tell('对手已退出当前遭遇。')

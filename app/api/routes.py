@@ -5,6 +5,7 @@ from app.api.schemas import decode_request, encode_response
 from app.application import archives, creation, recovery
 from app.application.encounters import active_encounter, public_encounter
 from app.domain.errors import Conflict, NotFound, StaleProposal
+from app.domain.inventory import owned_items
 from app.domain.stress import stress_boxes
 from app.domain.types import ProposalStatus
 from app.modules.visibility import filter_for
@@ -169,7 +170,7 @@ async def get_view(runtime, request):
             'fate_points': player.attributes.get('fate_points', 0),
             'skills': player.attributes.get('skills', {}),
             'resources': {'hp':3,'stress':3,**player.attributes.get('resources', {})},
-            'inventory': [e.name for e in snapshot.entities.values() if e.kind.value=='item' and e.attributes.get('owner')==player.id],
+            'inventory': owned_items(snapshot),
         },
         'visible_facts': [
             {'id': f.id, 'predicate': f.predicate, 'value': f.value, 'subject_id': f.subject_id}

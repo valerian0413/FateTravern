@@ -1,68 +1,39 @@
 {
-  "opening_options": ["我先查看飞艇船帆的破损", "我走向酒馆，听听地图贩子在说什么"],
-  "opening_guide": {
-    "background": "两百年前，一艘破烂飞艇坠入云海，幸存者踏上了浮空岩。如今，人们乘飞艇在浮岛间讨生活。越往云海深处，猎物越凶悍，能带回来的食材也越稀奇。航线图常常比规矩可靠不了多少。",
-    "scene": "你刚在风栈岛靠泊。几块浮空岩由木栈道勉强连在一起，这里却是悬云海的贸易枢纽。你身后是船帆被风暴撕裂的飞艇，栈道尽头传来酒馆里的叫卖声。抽气桩旁，一位栈道会的老人正看着来往的人。",
-    "people": "老开拓者组成的栈道会维持泊位与航线交易的规矩，还看管抽气桩。退休开拓者经营的酒馆聚着猎手、冒险者和手绘地图贩子。想核实传闻、找同行者或打听活计，都可以去那里。",
-    "features": "淡水靠收集雨水，食物靠猎捕和交换。小飞艇充一囊浮力瓦斯约需五十云币。远岛的发光孢子林、巨兽骸骨和奇异食材吸引着猎手，也给研究云海生态的人留下了不少问题。",
-    "jobs": "这里常见的活计与探航线、陪同猎捕、采集食材或标本、运送补给有关。酒馆里有人招人手，也有人兜售没有核实过的消息。接活前可以先问清路线、风险、报酬和对方到底需要你做什么。"
-  },
   "demo_id": "xuan-yun-hai",
-  "name": "悬云海",
-  "blurb": "你是刚到云海的见习学者，口袋里只剩五十云币。飞艇停在风栈岛的栈道边，船帆还留着风暴的裂口。此行要写下《悬云海怪物生态指南》，但得先在这里站住脚。",
-  "world_revision": 2,
+  "name": "悬云海-预设",
+  "blurb": "你是见习学者云隼，为完成老师未竟的《空岛怪物指南》，搭乘飞艇前往悬云岛。飞艇正在穿越雷云层，一只云鲨突然朝船身冲来。",
+  "world_revision": 9,
   "book": {
     "schema_version": 1,
-    "name": "悬云海",
+    "name": "悬云海-预设",
     "sections": {
       "background": [
         {
-          "id": "bg_shattered_airship",
-          "text": "约两百年前，第一艘破烂飞艇被风暴撕碎、歪斜坠入云海，幸存开拓者踏上浮空岩，成为一个时代的起点。",
+          "id": "bg_first_landing",
+          "text": "许久以前，一艘残破飞艇冲出雷云层，踏足了悬云海首个落脚点风栈岛。如今这浮空岩群仍是冒险者起始的坐标，无数飞艇自此出发飞向云海深处，探索不同的风光，寻找前辈留下的宝藏，狩猎怪物，然后饱餐一顿。",
           "visibility": "public",
           "status": "confirmed",
           "mutability": "fixed"
         },
         {
-          "id": "bg_windstack_hub",
-          "text": "两百年后，风栈岛仍只是木制栈道勉强勾连的浮空岩，淡水靠收集雨水，却成了悬云海唯一的贸易枢纽，冒险者多在此停步。",
+          "id": "bg_main_loop",
+          "text": "悬云海的冒险者多以狩猎云海怪物为生：接下委托、追踪猎物、采集素材，再把素材卖给商队或工坊，换钱、修船、添装备。狩猎归来的怪物食材常被做成热气腾腾的料理，围桌开饭是冒险者之间最热闹的庆功方式。",
           "visibility": "public",
           "status": "confirmed",
           "mutability": "evolving"
-        },
-        {
-          "id": "bg_island_secrets",
-          "text": "悬云海的秘密藏在每片浮空岛：发光孢子森林与巨菇、远古生物骸骨上长出的奇异果树、孤岩上插着的锈剑等前人遗产。",
-          "visibility": "public",
-          "status": "confirmed",
-          "mutability": "evolving"
-        },
-        {
-          "id": "bg_eat_the_obstacle",
-          "text": "物资匮乏，能吃的东西多在云海深处；越深入猎物越凶悍也越美味。当地流传“悬云海上一切拦路虎都是盘中餐”。",
-          "visibility": "public",
-          "status": "confirmed",
-          "mutability": "fixed"
         }
       ],
       "tone": [
         {
-          "id": "tone_frontier_sky",
-          "text": "天空边疆开拓：破烂飞艇、勉强拼凑的栈道、未绘制的航线，梦想与风险并存。",
+          "id": "tone_light",
+          "text": "轻松的日系冒险：危险常有，但少有阴郁绝望；伙伴间的打趣、热腾腾的饭食和收获的喜悦贯穿旅程。",
           "visibility": "public",
           "status": "confirmed",
-          "mutability": "fixed"
+          "mutability": "evolving"
         },
         {
-          "id": "tone_food_hunt",
-          "text": "以“猎食”为核心的冒险浪漫：怪异飞兽、发光植物、浮游生物皆可入菜，越危险越美味。",
-          "visibility": "public",
-          "status": "confirmed",
-          "mutability": "fixed"
-        },
-        {
-          "id": "tone_tall_tales",
-          "text": "酒馆吹嘘与未干墨迹的地图并存，传闻真假难辨，冒险者半信半疑地出发。",
+          "id": "tone_ingredient_hook",
+          "text": "冒险中格外关注新奇的魔法食材：每到一处新环境，故事常从一道没见过的云海食材、一锅奇特料理或一张食材委托展开，由食材牵出当地的风土、人物与麻烦。",
           "visibility": "public",
           "status": "confirmed",
           "mutability": "evolving"
@@ -70,54 +41,89 @@
       ],
       "geography": [
         {
-          "id": "geo_floating_islands",
-          "text": "悬云海由无数浮空岩与浮空岛构成，岛间以云海相隔；风栈岛是已知唯一贸易枢纽。",
+          "id": "geo_thunder_cloud_layer",
+          "text": "雷云层位于悬云海最底部，下方不断升腾的湿热气流与上方沉降的冷气在此相遇，形成一片雷云堆积的危险空域。层中生活着以雷电为能量源的特化藻类，以及依附这些雷云藻群生活的浮空鱼类。无论从地面来到悬云海，都要冒险穿过雷云层。",
           "visibility": "public",
           "status": "confirmed",
           "mutability": "evolving"
         },
         {
-          "id": "geo_fengzhan",
-          "text": "风栈岛：木制栈道勾连的多块浮空岩，边缘停泊飞艇，栈道尽头有酒馆，淡水靠收集雨水。",
+          "id": "geo_thunder_algae",
+          "text": "雷云藻是扎根在浓密雷云中的巨型藻类，以吸收雷元素代替光合作用，能长到数百米，飞艇船员常称它们为“雷母的绸缎”。它们结出的果实发出蓝紫光，摘取后呈淡蓝色，富含糖类，口感如果冻般柔滑，并带有刺激感，被称为“雷母的黑珍珠”，是雷云层中许多小型生物的主食，也常被补给短缺的飞艇队员当作临时主食。",
           "visibility": "public",
           "status": "confirmed",
           "mutability": "evolving"
         },
         {
-          "id": "geo_deep_cloud",
-          "text": "云海深处岛屿更危险也更丰饶：孢子森林、巨兽骸骨岛、孤岩遗产等；具体航线与远岛分布未定。",
+          "id": "geo_cloud_food_chain",
+          "text": "雷云层的浮空鱼类以雷云藻群及其果实为食，云鲨则处于这条食物链上层，以浮空鱼类为食，偶尔会因追逐鱼群而跟飞艇纠缠。",
           "visibility": "public",
-          "status": "open",
-          "mutability": "open"
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "geo_windpier_island",
+          "text": "风栈岛是悬云海最热闹的落脚点之一，也是冒险者出发的起始坐标：市集沿栈道铺开，商队与工坊在此收购素材、兜售装备，料理摊林立，冒险者带回的新鲜怪物食材常在天黑前就变成一道道热菜。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
         }
       ],
       "supernatural": [
         {
-          "id": "sup_floating_rocks",
-          "text": "浮空岩与浮空岛为何悬浮、云海是否有边界或规律，尚未设定。",
-          "visibility": "public",
-          "status": "open",
-          "mutability": "open"
-        },
-        {
-          "id": "sup_lift_gas",
-          "text": "小型飞艇的浮力囊依赖浮力瓦斯维持升力。瓦斯天然积存于云海深处浮空岩腹中的“气穴”，需以抽囊与火封采集。风栈岛栈道尽头设有抽气桩，由栈道会看管；冒险者以猎获、云币或劳力换取充囊，按次收费，一囊约 50 云币。抽气桩的规矩由栈道会当面裁断，私下偷抽被视为坏规矩。",
+          "id": "sup_magic_exists",
+          "text": "悬云海存在魔法。魔法并非人人可用的天赋，而是可以通过学习与研究掌握的力量。",
           "visibility": "public",
           "status": "confirmed",
           "mutability": "evolving"
         },
         {
-          "id": "sup_tamed_beasts",
-          "text": "云鲸等浮游兽可被驯养并载人3—5人，飞行依靠其自身浮游能力，不消耗瓦斯的规模。驯养方式、速度与风险未定。",
+          "id": "sup_monster_material_magic",
+          "text": "魔法的核心媒介是怪物素材：云海怪物的骨、鳞、羽、腺体等蕴含的超凡之力，被工匠制成法器、符文或弹药，是施法与强化装备的主要来源。",
           "visibility": "public",
           "status": "confirmed",
-          "mutability": "open"
+          "mutability": "evolving"
+        },
+        {
+          "id": "sup_feast_boon",
+          "text": "食用以超凡怪物为素材烹制的佳肴，能让人在短时间内获得或增强超凡能力——不同的怪物料理带来不同的效果，效果持续有限，冷却与搭配各有讲究。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "sup_training_research",
+          "text": "人也能靠自身锻炼获得战斗能力，或通过魔法研究习得施法能力；这类能力稳定持久，但与料理带来的爆发式增益方向不同。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
         }
       ],
       "species": [
         {
-          "id": "species_unknown",
-          "text": "已知住民以人类开拓者后裔为主；是否存在其他智慧种族或进化飞兽未定。",
+          "id": "spc_humans_majority",
+          "text": "悬云海的人口以人类为主，市集、飞艇与工坊里最常见的都是人类面孔。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "spc_bloodline_folk",
+          "text": "除人类外，还有一部分人带有其他动物的血脉，身上留有猫耳、狼尾之类的特征。血脉给予他们敏锐的感官或体魄等长处，但在人群中并不算多见。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "spc_elves_dwarves",
+          "text": "云海中也生活着精灵与矮人等族裔：精灵多与云海草木和古老知识相关，矮人则以手艺和锻造见长，常在工坊与商队间往来。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "evolving"
+        },
+        {
+          "id": "spc_relations_open",
+          "text": "各族裔之间的相处方式、偏见与习俗尚未确定。",
           "visibility": "public",
           "status": "open",
           "mutability": "open"
@@ -125,142 +131,101 @@
       ],
       "factions": [
         {
-          "id": "fac_windstack_tavern",
-          "text": "风栈岛栈道尽头的酒馆，由一位退休的老开拓者独自经营，靠资历与栈道会的人情撑着，不隶属任何势力。是吹嘘见闻、兜售手绘地图与招揽人手的地方。",
+          "id": "fac_adventurer_guild",
+          "text": "悬云海最普及的势力，负责发布委托、登记冒险者、评定战果与信誉。冒险者接活、交素材、领取报酬大多经由协会，它在各落脚点设有分会，也是新手最常打交道的组织。",
           "visibility": "public",
           "status": "confirmed",
           "mutability": "evolving",
-          "name": "风栈酒馆"
+          "name": "冒险者协会"
         },
         {
-          "id": "fac_zhandaohui",
-          "text": "由几位老开拓者组成，维持风栈岛的最低规矩：禁飞艇抢泊、禁偷猎已售航线，并看管栈道尽头的抽气桩。人少力薄，靠资历与惯例说话，没有正式官署。",
+          "id": "fac_merchant_guild",
+          "text": "“商会”并非一个紧密统一的组织，而是各类商会与商队的统称。它们各自掌握航线、货源与买卖渠道，收购怪物素材、兜售装备补给，与工坊和冒险者往来密切；彼此之间有合作也有竞争，价格与航线走向很大程度上影响着云海上的生计。",
           "visibility": "public",
           "status": "confirmed",
           "mutability": "evolving",
-          "name": "栈道会"
+          "name": "商会"
         },
         {
-          "id": "fac_supply_open",
-          "text": "风栈岛无垄断补给商：淡水人人自取自集（收集雨水、凝结云气），无人收费或把持；食物靠猎捕与以物易物获得，价格随雨季浮动——雨季猎物难捕，干粮与肉价上涨。",
+          "id": "fac_scholars",
+          "text": "“学者组织”同样不是一个紧密统一的团体，而是各类学派与研究者的统称。他们各自专注云海生态、古代遗迹、魔法等不同领域，雇佣冒险者采集样本、勘探遗迹，也出售魔法知识与法器图纸；学派之间时有交流，也常有争论与门户之见。",
           "visibility": "public",
           "status": "confirmed",
           "mutability": "evolving",
-          "name": "水与食物"
+          "name": "学者组织"
+        },
+        {
+          "id": "fac_relations_open",
+          "text": "三大势力之间的具体关系、竞争与暗流尚未确定。",
+          "visibility": "public",
+          "status": "open",
+          "mutability": "open",
+          "name": "势力关系"
         }
       ],
       "currency": [
         {
-          "id": "cur_yunbi",
-          "text": "风栈岛通用基础货币为云币：贝壳状轻质币，1枚约买一块干粮或一碗雨水煮的稀汤；10枚约一顿带肉的热饭；50枚约一次小型飞艇充囊（一囊可安全往返最近可猎岛一趟）或一张风栈岛周边短途航线的单程搭乘价；100枚约一个冒险者三五天的粗茶淡饭加补给。目前无已知辅币，大额交易可能以物易物或记账。",
+          "id": "cur_tri_metal",
+          "text": "主要货币为金币、银币、铜币，兑换比为 1 金币 = 10 银币 = 100 铜币，与地面上的货币通用。",
+          "visibility": "public",
+          "status": "confirmed",
+          "mutability": "fixed",
+          "name": "金币·银币·铜币"
+        },
+        {
+          "id": "cur_price_basics",
+          "text": "大致物价：5 铜币一碗最简陋的热汤；20 铜币一顿饱饭；5 银币（=50 铜币）一顿很好的饭。住宿方面，3 银币一晚简陋通铺，10 银币一晚单间。",
           "visibility": "public",
           "status": "confirmed",
           "mutability": "evolving",
-          "name": "云币"
+          "name": "常见物价"
         }
       ],
       "transport": [
         {
-          "id": "tra_airship",
-          "text": "飞艇是已知抵达悬云海并停泊风栈岛的方式；飞艇如何获得浮力、由何驱动、航速与费用未定。",
-          "visibility": "public",
-          "status": "open",
-          "mutability": "open"
-        },
-        {
-          "id": "tra_short_lift",
-          "text": "短途飞行：浮力囊小型飞艇，需补充浮力瓦斯。风栈岛栈道尽头抽气桩充囊约 50 云币一囊，一囊可安全往返最近可猎岛一趟。具体航速与单程耗时不在设定中固定，留给游戏内遭遇时按情境判断。",
+          "id": "tra_large_airship",
+          "text": "远距离交通依靠大型飞艇，可载几十到上百人。飞艇以可燃烧的怪物素材为能源驱动，航线多由商会与协会掌握。",
           "visibility": "public",
           "status": "confirmed",
           "mutability": "evolving"
         },
         {
-          "id": "tra_long_wind",
-          "text": "长途飞行：主要依靠风帆与固定航线的季风，以减少浮力囊瓦斯消耗；航线季节与耗时未定。",
+          "id": "tra_small_airship",
+          "text": "短距离出行多用小型飞艇，载 2—5 人，灵活轻便，是小队冒险者最常用的代步工具。",
           "visibility": "public",
           "status": "confirmed",
-          "mutability": "open"
+          "mutability": "evolving"
         },
         {
-          "id": "tra_cloudwhale",
-          "text": "驯养云鲸可载3—5人飞行，作为替代飞艇的交通方式；驯养门槛、租乘费用与安全性未定。",
+          "id": "tra_tamed_beasts",
+          "text": "短途也可骑乘或役使驯养的浮空野兽，例如云鲸；具体载人数与舒适程度因种类而异，驯养与照料本身也是门手艺。",
           "visibility": "public",
           "status": "confirmed",
-          "mutability": "open"
+          "mutability": "evolving"
         }
       ],
       "law": [
         {
-          "id": "law_zhandaohui",
-          "text": "风栈岛由几位老开拓者组成的“栈道会”维持最低规矩：禁飞艇抢泊、禁偷猎已售航线，看管抽气桩并按次收取充囊费。调解猎捕与交易纠纷，但无正式官署与常备武力，没有强制力，裁决靠资历、惯例与当众对质。",
+          "id": "law_guild_compact",
+          "text": "悬云海没有统一的成文律法，日常秩序以冒险者协会的共同约定为准：登记、接委托、分配战果与结算报酬都按协会的规矩来，各落脚点的分会负责调解纠纷。",
           "visibility": "public",
           "status": "confirmed",
           "mutability": "evolving"
         },
         {
-          "id": "law_unset",
-          "text": "栈道会调解无效或当事人不认账时如何处理（私了、酒馆仲裁、还是另有势力），未定。",
-          "visibility": "public",
-          "status": "open",
-          "mutability": "open"
-        },
-        {
-          "id": "law_supply",
-          "text": "风栈岛无补给垄断：淡水自取自集，不计价、不归任何人把持；食物靠猎捕与以物易物，价格随雨季浮动。栈道会不干预淡水的取用，只在食物交易起纠纷时调解。",
+          "id": "law_major_incidents",
+          "text": "若发生恶性事件，由协会派出资深冒险者处理；他们既是调查者也是执行者，处置结果会记入协会的信誉记录。",
           "visibility": "public",
           "status": "confirmed",
           "mutability": "evolving"
         }
       ],
-      "open_questions": [
-        {
-          "id": "oq_flight_source",
-          "text": "（已定）浮力瓦斯来自云海深处浮空岩腹中的气穴，抽气桩设在风栈岛栈道尽头、由栈道会看管，充囊约 50 云币一囊、可安全往返最近可猎岛一趟。",
-          "visibility": "public",
-          "status": "confirmed",
-          "mutability": "evolving"
-        },
-        {
-          "id": "oq_tavern_owner",
-          "text": "（已定）风栈酒馆由一位退休老开拓者独自经营，靠资历与栈道会人情支撑，不隶属任何势力。",
-          "visibility": "public",
-          "status": "confirmed",
-          "mutability": "evolving"
-        },
-        {
-          "id": "oq_cloud_edge",
-          "text": "云海是否有边界、浮空岩为何悬浮，未定。",
-          "visibility": "public",
-          "status": "open",
-          "mutability": "open"
-        },
-        {
-          "id": "oq_gas_price",
-          "text": "（已定）一囊 50 云币、可安全往返最近可猎岛一趟；具体里程与航速不固定，由游戏内遭遇判断。",
-          "visibility": "public",
-          "status": "confirmed",
-          "mutability": "evolving"
-        },
-        {
-          "id": "oq_ship_speed",
-          "text": "（已定：不设定固定数值）小型飞艇续航以“一囊可安全往返最近可猎岛一趟”为准，单程耗时与航速在游戏中按情境判断。",
-          "visibility": "public",
-          "status": "confirmed",
-          "mutability": "evolving"
-        },
-        {
-          "id": "oq_species",
-          "text": "是否存在其他智慧种族或能交流的进化飞兽，未定。",
-          "visibility": "public",
-          "status": "open",
-          "mutability": "open"
-        }
-      ]
+      "open_questions": []
     },
     "initial_scene": {
-      "name": "风栈岛",
-      "description": "木制栈道勾连的浮空岩岛屿，边缘停着你的飞艇，船帆有风暴裂口；栈道尽头酒馆里有人吹嘘会移动的金果岛，有人兜售墨迹未干的“绝对安全”航线图，店主是位不爱多话的老开拓者。",
-      "opening": "你站在风栈岛边缘的栈道上，补给袋里只有几块干粮和几枚云币，飞艇船帆还留着上一场风暴的裂口。栈道尽头的酒馆传出吹嘘与叫卖声，不远处的抽气桩旁，栈道会的老人正看着来往的人。你可以先查看飞艇的破损，或走向酒馆听地图贩子怎么说。"
+      "name": "雷云层中的飞艇",
+      "description": "这艘飞艇正穿过雷云层，驶往悬云岛。云雾遮住了船外的视野，闪电不时照亮船身。一只云鲨在飞艇附近游弋，正准备攻击飞艇。",
+      "opening": "你在一艘驶往悬云岛的飞艇上。雷声压过了风声，闪电照亮船舷外的云雾。一只云鲨贴着飞艇游过，在前方掉头。下一道闪电亮起时，它正朝船身冲来。你打算怎么护住这艘飞艇？"
     },
     "skills": [
       "学术",
@@ -285,16 +250,20 @@
     ]
   },
   "character": {
+    "name": "云隼·见习学者",
+    "background": "你是一名刚出师的见习学者，跟随老师研习云海生态与古代知识。老师的理想是编成一部《空岛怪物指南》，如今这担子落到你肩上：你乘飞艇穿过雷云层前往悬云海，一边冒险，一边记录所见怪物、采集样本。你也会几手简单的法术，靠老师留下的旧法器施放。",
+    "motivation": "完成老师未竟的《空岛怪物指南》：亲眼记录云海怪物、收集素材与见闻，并把它们写成书。",
+    "skill_reason": "学术+2：多年研读云海生态与古籍，是你最扎实的本事。调查+1：野外记录与样本比对让你善于从细节中找线索。传说+1：熟悉怪物与古迹的传闻典故。",
     "aspects": [
       {
         "id": "aspect:high_concept",
         "kind": "high_concept",
-        "text": "执笔记云的见习学者"
+        "text": "见习学者"
       },
       {
         "id": "aspect:free",
         "kind": "free",
-        "text": "“先记下来，再想办法活命”"
+        "text": "《空岛怪物指南》"
       }
     ],
     "skills": {
@@ -318,6 +287,26 @@
       "隐匿": 0,
       "意志": 0
     },
+    "stunts": [],
+    "equipment": [
+      "记录本与炭笔",
+      "装样本的小瓶与布袋",
+      "老师留下的旧法器（施法媒介，完好可用）",
+      "一盏便携提灯",
+      "几枚应急干粮",
+      {
+        "name": "铜币",
+        "quantity": 5
+      }
+    ],
+    "ruleset_id": "fate-lite-v1",
+    "stress_tracks": {
+      "unified": [
+        false,
+        false,
+        false
+      ]
+    },
     "consequences": {
       "mild": {
         "capacity": 2,
@@ -331,32 +320,6 @@
         "capacity": 6,
         "text": null
       }
-    },
-    "stunts": [],
-    "stress_tracks": {
-      "physical": [
-        false,
-        false,
-        false
-      ],
-      "mental": [
-        false,
-        false,
-        false
-      ]
-    },
-    "skill_reason": "学术+2：地面学院的系统训练与简单小魔法；调查+1：收集标本、核对传闻与绘制草图；传说+1：出发前把能读的云海旧闻与手绘图册都翻烂了。",
-    "motivation": "完成《悬云海怪物生态指南》：亲手记录云海深处的飞兽与怪植，靠见闻、记录与学问换饭吃。",
-    "background": "你从地面而来，随飞艇初入悬云海，是个见习学者。学过几手简单小魔法，此行的目的是游学增广见闻，最终写出一本《悬云海怪物生态指南》。眼下你的全部家当是几块干粮和50云币，必须在花光之前找到立足之法。",
-    "name": "未署名的见习学者",
-    "equipment": [
-      "空白笔记与炭笔",
-      "装标本的小布袋与几只玻璃瓶",
-      "几块干粮",
-      "破损的旅行斗篷",
-      "一柄削笔用的小刀"
-    ],
-    "ruleset_id": "fate-lite-v1",
-    "money": 50
+    }
   }
 }

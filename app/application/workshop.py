@@ -4,6 +4,7 @@ import uuid
 from copy import deepcopy
 
 from app.domain.errors import Conflict, NotFound, ValidationError
+from app.domain.inventory import currency_names, item_stack, validate_item
 from app.domain.types import Entity, EntityKind, Fact, FactStatus, Phase, World
 from app.rules.character import CONFIG, RULESET, SKILLS, validate_character
 from app.application.streaming import text_sink
@@ -330,7 +331,8 @@ async def create_prepared_world(conn, book, card, world_revision: int, *, openin
     ))
     await EntityRepo(conn).upsert(Entity(
         id=pid, world_id=wid, kind=EntityKind.PLAYER, name=card['name'],
-        attributes={**card, 'character_template': deepcopy(card), 'resources': {'coins': card.get('money', 0)},
+        attributes={**{key: value for key, value in card.items() if key != 'money'},
+                    'character_template': deepcopy(card), 'resources': {},
                     'location_id': location, 'opening_intent': book['initial_scene']['opening']},
         revision=1,
     ))
@@ -354,11 +356,16 @@ async def create_prepared_world(conn, book, card, world_revision: int, *, openin
             value=entry['text'], status=FactStatus.ACTIVE,
             disclosure_rule={'disclosure': 'public' if entry['visibility'] == 'public' else 'hidden'},
         ))
-    for equipment in card.get('equipment', []):
-        await EntityRepo(conn).upsert(Entity(
-            id=str(uuid.uuid4()), world_id=wid, kind=EntityKind.ITEM,
-            name=equipment, attributes={'owner': pid}, revision=1,
-        ))
+    currencies = currency_names(world)
+    counts = {}
+    for entry in card.get('equipment', []):
+        name, quantity = validate_item(entry)
+        counts[name] = counts.get(name, 0) + quantity
+    if amount := card.get('money', 0):
+        base = currencies[-1]
+        counts[base] = counts.get(base, 0) + amount
+    for name, quantity in counts.items():
+        await EntityRepo(conn).upsert(item_stack(world, name, quantity, currency=name in currencies))
     return world
 
 

@@ -146,12 +146,22 @@ async def commit_turn(
                 'ruleset_version': roll['ruleset_version'], 'dice': roll['dice'], 'payload': roll,
             })
             if roll['mode'] == 'opposed':
-                explanation = (f"{roll['actor']} {roll['dice']}（总值 {roll['attack_total']}）对 "
-                               f"{roll['target']} {roll['defense_dice']}（总值 {roll['defense_total']}），"
+                attack = f"{roll['actor']} {roll['domain']} {roll['skill_bonus']:+d}"
+                defense = roll['target']
+                if roll.get('defense_domain'):
+                    defense += f" 防守（{roll['defense_domain']}，合计 {roll['defense_bonus']:+d}）"
+                modifiers = sum(modifier['value'] for modifier in roll['modifiers'])
+                if modifiers:
+                    attack += f"，情境 {modifiers:+d}"
+                explanation = (f"{attack}，掷出 {roll['dice']}（总值 {roll['attack_total']}）\n"
+                               f"{defense}，掷出 {roll['defense_dice']}（总值 {roll['defense_total']}）\n"
                                f"差值 {roll['margin']:+d}。")
             else:
-                explanation = (f"{roll['actor']} {roll['dice']}（总值 {roll['total']}），"
+                explanation = (f"{roll['actor']} {roll['domain']} {roll['skill_bonus']:+d}，"
+                               f"掷出 {roll['dice']}（总值 {roll['total']}），"
                                f"难度 {roll['dc']}，{'成功' if roll['success'] else '失败'}。")
+            if roll.get('skill_reason'):
+                explanation += '\n依据：' + roll['skill_reason']
             messages.append(await MessageRepo(db).append(
                 world_id, Channel.INTERACTION, 'gm', explanation, request_id=request_id, turn_id=turn_id,
             ))

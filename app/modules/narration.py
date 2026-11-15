@@ -1,6 +1,7 @@
 """Compose player paraphrase + GM text from PublicOutcome only."""
 from __future__ import annotations
 
+import json
 import uuid
 
 from app.domain.errors import ValidationError
@@ -59,7 +60,7 @@ async def compose(provider, settings, public_outcome: PublicOutcome | dict, styl
             call_id=uuid.uuid4().hex,
             messages=[
                 {'role': 'system', 'content': spec.text + '\n只返回 JSON。'},
-                {'role': 'user', 'content': str(payload)},
+                {'role': 'user', 'content': json.dumps(payload, ensure_ascii=False)},
             ],
         ), on_delta=TextFieldWatch('gm_text', on_text) if on_text else None)
         result = response.content

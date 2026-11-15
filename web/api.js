@@ -47,7 +47,7 @@ export function subscribe(worldId, lastSequence, onEvent) {
       chain = chain.then(()=>onEvent(payload)).catch(error=>console.error('事件处理失败',error));
     } catch (_) {}
   };
-  ['check.announced', 'progress', 'interaction.completed', 'proposal.ready', 'turn.committed', 'request.failed', 'assistant.delta'].forEach((type) => {
+  ['action.acknowledged', 'check.announced', 'progress', 'interaction.completed', 'proposal.ready', 'turn.committed', 'request.failed', 'assistant.delta'].forEach((type) => {
     source.addEventListener(type, handler);
   });
   return () => source.close();

@@ -5,6 +5,7 @@ import pytest
 
 from app.domain.changes import apply_to_copy, register, validate_changes
 from app.domain.errors import ValidationError
+from app.domain.inventory import owned_items
 from app.domain.types import CandidateBatch, EntityKind, FactStatus
 
 
@@ -26,6 +27,22 @@ def test_resource_delta_rejects_negative(world_snapshot):
     }]
     issues = validate_changes(changes, world_snapshot)
     assert any(i.path == 'changes[0]' for i in issues)
+
+
+def test_legacy_coins_and_new_currency_stacks(world_snapshot):
+    world_snapshot.world.ruleset_config['currency_denominations'] = ['银币', '钱币']
+    player = world_snapshot.entities[world_snapshot.world.player_id]
+    assert 'coins' not in player.attributes['resources']
+    assert [(item['name'], item['quantity']) for item in owned_items(world_snapshot)] == [('钱币', 5)]
+
+    changes = [
+        {'op': 'currency_delta', 'op_id': 'reward', 'currency': '银币', 'expected_quantity': 0, 'delta': 2},
+        {'op': 'resource_delta', 'op_id': 'legacy', 'key': 'coins', 'expected_value': 5, 'delta': -3},
+    ]
+    result = apply_to_copy(world_snapshot, changes)
+    assert {item['name']: item['quantity'] for item in owned_items(result)} == {'钱币': 2, '银币': 2}
+    with pytest.raises(ValidationError, match='数量已变化'):
+        apply_to_copy(result, changes)
 
 
 def test_apply_append_fact(world_snapshot):

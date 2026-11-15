@@ -1,4 +1,5 @@
 import asyncio
+import json
 from dataclasses import replace
 
 import pytest
@@ -7,6 +8,7 @@ from aiohttp.test_utils import TestClient, TestServer
 from app.api.server import create_app
 from app.bootstrap import build_runtime
 from app.config import Settings
+from app.providers.base import ModelResponse
 
 
 @pytest.fixture
@@ -94,30 +96,62 @@ async def test_world_setting_catalog_and_copy_http(client):
     assert (await client.get(f"/api/v1/workshop/{copied['id']}")).status == 200
 
 
-async def test_demo_route_copies_xuan_yun_hai(client):
+class OpeningModel:
+    def __init__(self):
+        self.calls = 0
+
+    async def complete(self, request):
+        assert request.module == 'opening'
+        self.calls += 1
+        context = json.loads(request.messages[1]['content'])
+        assert context['scene']['location'] == '雷云层中的飞艇'
+        assert '见习学者' in context['character']['identity']
+        return ModelResponse({
+            'background': '当年，残破的飞艇冲出雷云，在风栈岛落脚。如今冒险者从那里飞向云海深处。',
+            'character': '你是见习学者云隼，想完成老师留下的《空岛怪物指南》。',
+            'scene': '你搭乘的飞艇正穿过雷云层。一只云鲨掉头直冲船身。',
+            'question': '你怎么护住飞艇？',
+            'options': ['我提醒船上的人留意云鲨', '我举起旧法器，试着引开云鲨'],
+        }, '', {})
+
+
+async def test_demo_route_copies_xuan_yun_hai(client, monkeypatch):
     http, _runtime = client
     listed = await (await http.get('/api/v1/demos')).json()
-    assert any(item['id'] == 'xuan-yun-hai' and item['character_name'] == '未署名的见习学者' for item in listed)
+    assert any(item['id'] == 'xuan-yun-hai' and item['character_name'] == '云隼·见习学者' for item in listed)
     created = await http.post('/api/v1/demos/xuan-yun-hai/play', json={})
     assert created.status == 201
     body = await created.json()
-    assert body['name'] == '悬云海' and body['phase'] == 'prepared'
+    assert body['name'] == '悬云海-预设' and body['phase'] == 'prepared'
     path = f"/api/v1/worlds/{body['id']}"
-    opened = await http.post(f'{path}/start', json={'request_id': 'demo-opening'})
-    assert opened.status == 202
+    unavailable = await http.post(f'{path}/start', json={'request_id': 'demo-opening'})
+    assert unavailable.status == 502
+    assert (await unavailable.json())['code'] == 'model_unavailable'
+    assert not await (await http.get(f'{path}/messages?channel=narrative')).json()
+    assert (await (await http.get(f'{path}/view')).json())['phase'] == 'prepared'
+
+    model = OpeningModel()
+    with monkeypatch.context() as patch:
+        patch.setattr(_runtime, 'provider', model)
+        opened = await http.post(f'{path}/start', json={'request_id': 'demo-opening'})
+        assert opened.status == 202
+        repeated = await http.post(f'{path}/start', json={'request_id': 'repeat-opening'})
+        assert repeated.status == 202
+        assert model.calls == 1
     narrative = await (await http.get(f'{path}/messages?channel=narrative')).json()
     assert len(narrative) == 1 and narrative[0]['author'] == 'gm'
     opening = narrative[0]['text']
-    for section in ('世界背景', '风栈岛', '这里有哪些人', '这里有什么特色', '可以从哪些委托入手'):
-        assert section in opening
-    assert '你是执笔记云的见习学者' in opening
-    assert '《悬云海怪物生态指南》' in opening
+    background, character, scene = opening.split('\n\n')
+    assert '风栈岛' in background
+    assert '见习学者' in character and '《空岛怪物指南》' in character
+    assert '云鲨' in scene
     initial = await (await http.get(f'{path}/view')).json()
     assert initial['version'] == initial['clock'] == 0
+    assert any(item['name'] == '铜币' and item['quantity'] == 5 for item in initial['character']['inventory'])
     interaction = await (await http.get(f'{path}/messages?channel=interaction')).json()
     assert interaction[0]['choices_active']
     options = interaction[0]['options']
-    assert len(options) == 2
+    assert options == ['我提醒船上的人留意云鲨', '我举起旧法器，试着引开云鲨']
     result = await http.post(f'{path}/messages', json={
         'request_id': 'demo-first-choice', 'text': options[0], 'reply_to': 'demo-opening',
     })
@@ -127,6 +161,8 @@ async def test_demo_route_copies_xuan_yun_hai(client):
         await task
     view = await (await http.get(f'{path}/view')).json()
     assert view['version'] == 1
+    interaction = await (await http.get(f'{path}/messages?channel=interaction')).json()
+    assert sum(row['author'] == 'gm' and row['text'].startswith('好，你试着') for row in interaction) == 1
     missing = await http.post('/api/v1/demos/missing/play', json={})
     assert missing.status == 404
 
@@ -237,14 +273,16 @@ async def test_native_lookup_returns_data_and_model_selects_host_window(client):
     assert (await (await http.get(f'{path}/view')).json())['version'] == 0
 
 
-async def test_delete_adventure_removes_only_its_records(client):
+async def test_delete_adventure_removes_only_its_records(client, monkeypatch):
     http, runtime = client
     response = await http.post('/api/v1/demos/xuan-yun-hai/play', json={})
     world_id = (await response.json())['id']
     other = await http.post('/api/v1/demos/xuan-yun-hai/play', json={})
     other_id = (await other.json())['id']
     path = f'/api/v1/worlds/{world_id}'
-    assert (await http.post(f'{path}/start', json={'request_id': 'opening'})).status == 202
+    with monkeypatch.context() as patch:
+        patch.setattr(runtime, 'provider', OpeningModel())
+        assert (await http.post(f'{path}/start', json={'request_id': 'opening'})).status == 202
     assert (await http.delete(path)).status == 200
     assert (await http.get(f'{path}/view')).status == 404
     assert (await http.get(f'/api/v1/worlds/{other_id}/view')).status == 200

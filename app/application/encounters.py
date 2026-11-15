@@ -5,13 +5,21 @@ import uuid
 from copy import deepcopy
 
 from app.api.notify import notify_world
+from app.application.context import public_book
+from app.application.streaming import text_sink
 from app.domain.errors import StaleTurn, ValidationError
+from app.domain.inventory import owned_items
 from app.domain.stress import CAPACITIES, stress_boxes
 from app.domain.types import Channel, EntityKind, PublicOutcome, TurnDraft, TurnStage
 from app.modules import encounter as model
-from app.rules.encounter import EncounterRound, ROUND_SECONDS, CONTESTED, GOAL_PROGRESS
+from app.modules import encounter_skills
+from app.modules import narration
+from app.rules.encounter import EncounterRound, ROUND_SECONDS, CONTESTED, GOAL_PROGRESS, OBJECTIVE
 from app.storage.repositories import EncounterRepo, MessageRepo, StreamRepo, TurnRepo, WorldRepo
 from app.application.commit import commit_turn
+
+
+ROUND_PLAN_VERSION = 2
 
 
 def active_encounter(state):
@@ -76,11 +84,16 @@ def build_encounter(turn, snapshot, kind, previous, setup):
         name = model.short(row.get('name'), 50)
         eid = model.short(row.get('entity_id'), 100)
         entity = snapshot.entities.get(eid)
-        if eid and (not entity or entity.kind != EntityKind.NPC):
+        if entity and entity.kind != EntityKind.NPC and name == entity.name:
             raise ValidationError('遭遇对手必须引用现有 NPC，或提供新对手名字', path='encounter.entity_id')
-        if not entity and name:
-            entity = next((e for e in snapshot.entities.values() if e.kind == EntityKind.NPC
-                           and (name == e.name or name in (e.attributes.get('aliases') or []))), None)
+        if not entity or entity.kind != EntityKind.NPC:
+            # A borrowed location ID or an invented ID is not an opponent identity.
+            matches = [e for e in snapshot.entities.values() if name and e.kind == EntityKind.NPC
+                       and (name == e.name or name in (e.attributes.get('aliases') or []))]
+            if len(matches) > 1:
+                raise ValidationError('有多个同名对手，请提供已存在的对手 ID', path='encounter.entity_id')
+            entity = matches[0] if matches else None
+            eid = ''
         if entity:
             eid, name = entity.id, entity.name
             if entity.attributes.get('combat_status') == 'taken_out':
@@ -114,22 +127,59 @@ def build_encounter(turn, snapshot, kind, previous, setup):
 def plan_round(raw, state):
     if not isinstance(raw, dict) or not isinstance(raw.get('opponents'), dict):
         raise ValidationError('遭遇计划须包含玩家与对手动作', path='encounter.round')
+    if isinstance(raw.get('player'), list):
+        steps = raw['player']
+        if not 1 <= len(steps) <= 3 or any(not isinstance(step, dict) for step in steps):
+            raise ValidationError('每轮可安排一至三个连续步骤', path='encounter.steps')
+        durations = [step.get('seconds') for step in steps]
+        if any(type(seconds) is not int or not 1 <= seconds <= ROUND_SECONDS for seconds in durations) or sum(durations) > ROUND_SECONDS:
+            raise ValidationError('每个步骤须标明 seconds，整轮合计不能超过8秒', path='encounter.steps')
+        if sum(step.get('kind') == 'attack' for step in steps) > 1:
+            raise ValidationError('一轮最多一次主要攻击，不能用拆步骤增加攻击次数', path='encounter.steps')
+        planned_steps = []
+        for index, step in enumerate(steps):
+            dependent = step.get('requires_previous_success', index > 0)
+            if type(dependent) is not bool:
+                raise ValidationError('步骤依赖须为布尔值', path='encounter.steps')
+            move = plan_round({**raw, 'player': step}, state)[state['order'][0]]
+            if len(steps) > 1 and move['kind'] in ('clarify', 'continue', 'withdraw'):
+                raise ValidationError('澄清、继续跨轮准备或撤离须单独执行', path='encounter.steps')
+            if move['kind'] == 'prepare' and move['rounds'] > 1 and index < len(steps) - 1:
+                raise ValidationError('跨轮准备尚未完成，后续动作应留待下一轮', path='encounter.steps')
+            move.update(seconds=durations[index], requires_previous_success=dependent)
+            planned_steps.append(move)
+        planned = plan_round({**raw, 'player': steps[0]}, state)
+        planned[state['order'][0]] = {**planned_steps[0], 'followups': planned_steps[1:]}
+        return planned
     player_id = state['order'][0]
-    player_move = model.action(raw.get('player'), state['kind'])
+    player_move = model.action(raw.get('player'))
     if player_move['kind'] == 'clarify':
         return {player_id: player_move}
     targets = [uid for uid in state['order'][1:] if state['units'][uid]['status'] == 'active']
     planned = {}
     for uid in [player_id, *targets]:
-        move = player_move if uid == player_id else model.action(raw['opponents'].get(uid), state['kind'])
+        move = player_move if uid == player_id else model.action(raw['opponents'].get(uid))
         if move['kind'] == 'attack' and state['kind'] != 'combat':
             move['kind'] = 'advance'
-        if move['kind'] in CONTESTED | {'approach'}:
+        if (state['kind'] == 'combat' and uid != player_id and move['target_id'] == OBJECTIVE
+                and move['kind'] in ('attack', 'advance')):
+            move['kind'] = 'advance'
+            planned[uid] = move
+            continue
+        if move['kind'] in CONTESTED | {'approach', 'study'}:
             possible = targets if uid == player_id else [player_id]
+            if uid == player_id and move['kind'] == 'advance' and move['target_id'] == OBJECTIVE:
+                if len(possible) != 1:
+                    raise ValidationError('推进场景目标时，请指定阻碍行动的具体对手 ID', path='encounter.target_id')
+                move['target_id'] = possible[0]
             if not move['target_id'] and len(possible) == 1:
                 move['target_id'] = possible[0]
             if move['target_id'] not in possible:
                 raise ValidationError('动作需指定仍在场的有效对手', path='encounter.target_id')
+        if move['kind'] == 'study' and not move['weakness']:
+            raise ValidationError('寻找弱点须说明成功时能发现的具体破绽', path='encounter.weakness')
+        if move['kind'] == 'search' and not set(move['search_items']) <= set(state['scene_items']):
+            raise ValidationError('搜索结果只能引用当前场景已有的物品名称', path='encounter.search_items')
         if uid != player_id and move['kind'] == 'clarify':
             raise ValidationError('对手行动不能请求澄清', path='encounter.action')
         if move['kind'] == 'continue' and not state['units'][uid].get('pending'):
@@ -154,7 +204,8 @@ def hit_prompt(hit):
         parts.extend(f'{CAPACITIES[slot]} 点伤痕（{labels[slot]}）' for slot in slots)
         options.append('承受' + '＋'.join(parts))
     options.append('不吸收伤害，退出当前遭遇')
-    return f"你受到 {hit['damage']} 点伤害。请选择如何承受。", options
+    attacker = f"{hit['attacker']}的攻击命中了你。" if hit.get('attacker') else ''
+    return f"{attacker}你受到 {hit['damage']} 点伤害。请选择如何承受。", options
 
 
 class EncounterService:
@@ -199,12 +250,20 @@ class EncounterService:
                     raise StaleTurn('当前遭遇已经结束')
                 setup = checkpoint.get('encounter_setup')
                 if setup is None:
-                    setup = await model.ask(self.runtime, turn, 'encounter_setup',
-                                            {'kind': route['kind'], 'action': route['action'],
-                                             'player_text': turn.checkpoint['text'],
-                                             'target_ids': route['target_ids'], 'context': route['context']},
-                                            {'applicable': False})
-                state, changes = build_encounter(turn, snapshot, route['kind'], previous, setup)
+                    payload = {'kind': route['kind'], 'action': route['action'],
+                               'player_text': turn.checkpoint['text'],
+                               'target_ids': [eid for eid in route['target_ids'] if eid in snapshot.entities
+                                              and snapshot.entities[eid].kind == EntityKind.NPC],
+                               'context': route['context']}
+                    try:
+                        setup = await model.ask(self.runtime, turn, 'encounter_setup', payload, {'applicable': False})
+                        state, changes = build_encounter(turn, snapshot, route['kind'], previous, setup)
+                    except ValidationError as exc:
+                        setup = await model.ask(self.runtime, turn, 'encounter_setup',
+                                                {**payload, 'correction': exc.message}, {'applicable': False})
+                        state, changes = build_encounter(turn, snapshot, route['kind'], previous, setup)
+                else:
+                    state, changes = build_encounter(turn, snapshot, route['kind'], previous, setup)
                 if not state:
                     await self.reply(turn, '当前还没有能展开多轮对抗的对手或紧迫目标。你想先接近目标、调查，还是说明要对付谁？')
                     return
@@ -216,24 +275,24 @@ class EncounterService:
                     raise StaleTurn('当前已有遭遇，请针对当前轮声明行动')
                 state = deepcopy(state)
             if (cached := checkpoint.get('encounter_result')) is None:
-                cached = await self.resolve(turn, snapshot, state, start, changes, route)
+                cached = await self.resolve(turn, snapshot, state, start, changes, route, checkpoint)
                 if cached is None:
                     return
                 checkpoint['encounter_result'] = cached
                 await self.save_checkpoint(turn, checkpoint)
             await self.commit(turn, snapshot, cached, route)
 
-    async def save_checkpoint(self, turn, checkpoint):
+    async def save_checkpoint(self, turn, checkpoint, stage=TurnStage.RESOLVING):
         async with self.runtime.db.transaction():
             turns = TurnRepo(self.runtime.db.conn)
             current = await turns.get(turn.world_id, turn.id)
             if current.stage == TurnStage.CANCELLED:
                 raise StaleTurn('遭遇行动已取消')
             await turns.checkpoint(
-                turn.world_id, turn.id, TurnStage.RESOLVING, checkpoint,
+                turn.world_id, turn.id, stage, checkpoint,
             )
 
-    async def resolve(self, turn, snapshot, state, start, changes, route):
+    async def resolve(self, turn, snapshot, state, start, changes, route, checkpoint):
         events, checks = [], []
         game = EncounterRound(snapshot, state, changes, events, checks, turn.request_id)
         summary_events(state, game, start)
@@ -258,24 +317,39 @@ class EncounterService:
                                       game.attributes(uid).get('consequences', {}).items()}}
                     for uid in state['order'] if state['units'][uid]['status'] == 'active'
                 ],
-                'inventory': [e.name for e in snapshot.entities.values()
-                              if e.kind == EntityKind.ITEM and e.attributes.get('owner') == player_id],
+                'inventory': [item['name'] for item in owned_items(snapshot)],
                 'scene_items': state['scene_items'],
+                'recent_events': state.get('recent_events', []),
             }
             if self.runtime.provider is None and not (self.runtime.fixtures or {}).get('encounter_round'):
                 raise ValidationError('恢复模型连接后即可继续当前遭遇')
-            raw = await model.ask(self.runtime, turn, 'encounter_round', payload, None)
-            state['planned'] = plan_round(raw, state)
+            if checkpoint.get('encounter_plan_version') != ROUND_PLAN_VERSION or 'encounter_plan' not in checkpoint:
+                try:
+                    raw = await model.ask(self.runtime, turn, 'encounter_round', payload, None)
+                    checkpoint['encounter_plan'] = plan_round(raw, state)
+                except ValidationError as exc:
+                    raw = await model.ask(self.runtime, turn, 'encounter_round',
+                                          {**payload, 'correction': exc.message}, None)
+                    checkpoint['encounter_plan'] = plan_round(raw, state)
+                checkpoint['encounter_plan_version'] = ROUND_PLAN_VERSION
+                await self.save_checkpoint(turn, checkpoint)
+            state['planned'] = deepcopy(checkpoint['encounter_plan'])
+            card = game.attributes(player_id)
+            sections = (public_book(snapshot) or {}).get('sections', {})
+            checks_plan, question = await encounter_skills.select(self.runtime, turn, {
+                **payload,
+                'player_training': {key: card[key] for key in ('background', 'identity', 'skill_reason', 'aspects')
+                                    if key in card},
+                'supernatural': [entry['text'] for entry in sections.get('supernatural', [])],
+            }, state['planned'])
+            for key, uid, move in model.planned_actions(state['planned']):
+                move.update(checks_plan.get(key, {}))
             player_move = state['planned'][player_id]
-            question = ''
             if player_move['kind'] == 'clarify':
                 question = player_move['description']
-            if (player_move['kind'] == 'attack' and player_move['skill'] != '射击'
+            if (not question and player_move['kind'] == 'attack' and player_move['reach'] == 'close'
                     and state['units'][player_move['target_id']]['distance'] == 'far'):
-                question = '目标在近战距离之外。你想怎样接近，或是改用可用的远程手段？'
-            if (player_move['kind'] == 'attack' and player_move['skill'] == '射击'
-                    and player_move['equipment'] not in {*payload['inventory'], *state['scene_items']}):
-                question = '这次射击需要明确的远程武器。你打算用随身或眼前的哪件装备？'
+                question = '目前的手段需要接触目标。你想怎样接近，或是改用可用的远程手段？'
             if question:
                 if start:
                     state.pop('planned')
@@ -290,7 +364,7 @@ class EncounterService:
             uid = state['order'][state['cursor']]
             state['cursor'] += 1
             if uid in state['planned']:
-                game.perform(uid, state['planned'][uid])
+                game.perform_sequence(uid, state['planned'][uid])
         if not state.get('hit'):
             if not state.get('result'):
                 game.finish()
@@ -302,6 +376,9 @@ class EncounterService:
                 state['round'] += 1
         else:
             minutes = 0
+        if events:
+            recent = state.get('recent_events', []) if choice else []
+            state['recent_events'] = (recent + [event['text'] for event in events])[-8:]
         return {'state': state, 'events': events, 'changes': changes, 'checks': checks, 'minutes': minutes}
 
     async def commit(self, turn, snapshot, cached, route):
@@ -321,7 +398,16 @@ class EncounterService:
                 options = ['继续当前准备', '放弃准备，专注防守']
             else:
                 prompt = cached.get('question') or f"第 {state['round']} 轮轮到你。你想做什么？"
-                options = ['专注防守', '原地等待，观察局势', '尝试脱离当前对抗']
+                options = ['我专注防守', '我观察对手的动向']
+                if state['kind'] == 'combat' and state['scene_items']:
+                    options.append('我查看手边有哪些用得上的东西')
+                if state['kind'] == 'combat':
+                    nearby = any(state['units'][uid]['distance'] == 'close' and state['units'][uid]['status'] == 'active'
+                                 for uid in state['order'][1:])
+                    if nearby:
+                        options.append('我拉开距离，留在交战范围内')
+                else:
+                    options.append('我尝试退出当前对抗')
         changes = list(cached['changes'])
         if state.get('result') in ('player_goal', 'opponents_goal'):
             side = 'goal' if state['result'] == 'player_goal' else 'opponent_goal'
@@ -333,19 +419,47 @@ class EncounterService:
                 'disclosure_rule': {'disclosure': 'public'},
             })
         public = public_encounter(state)
+        player_text = turn.checkpoint.get('text') or route['action']
         outcome = PublicOutcome(
-            authorized_action=route['action'], observable_events=cached['events'],
+            authorized_action=player_text, observable_events=cached['events'],
             visible_entities=public['units'], visible_facts=[],
             stop_reason='encounter_ended' if not active else 'encounter_waiting',
         )
+        current = await TurnRepo(self.runtime.db.conn).get(turn.world_id, turn.id)
+        narrative = current.checkpoint.get('encounter_narration')
+        if narrative is None:
+            await self.save_checkpoint(turn, current.checkpoint, TurnStage.NARRATING)
+            await StreamRepo(self.runtime.db.conn).append(
+                turn.world_id, 'progress', {'stage': 'narrating'}, request_id=turn.request_id,
+            )
+            await self.runtime.db.conn.commit()
+            notify_world(self.runtime, turn.world_id)
+            fixture = (self.runtime.fixtures or {}).get('narration')
+            narrative = await narration.compose(
+                self.runtime.provider, self.runtime.settings, outcome,
+                style={
+                    'world_id': turn.world_id, 'turn_id': turn.id,
+                    'force_narration': fixture is not None,
+                    'encounter': public,
+                    'resolved_checks': cached['checks'],
+                    'pending_damage': ({'target_id': hit['target_id'], 'damage': hit['damage'],
+                                        'attacker': hit['attacker']} if hit else None),
+                    'max_chars': self.runtime.settings.narration_max_chars,
+                },
+                on_text=text_sink(self.runtime, turn.world_id, 'narrative', turn.request_id),
+            )
+            if fixture is not None:
+                narrative = narration.narrative_text(fixture)
+            await self.save_checkpoint(
+                turn, {**current.checkpoint, 'encounter_narration': narrative}, TurnStage.VALIDATING,
+            )
         draft = TurnDraft(
             base_version=snapshot.world.version, registered_candidates={},
             resolution_ids=[r['check_id'] for r in cached['checks']],
             changes=changes, events=[], public_outcome=outcome, options=options,
             choice_prompt=prompt, encounter=public, combat_decision=decision,
             encounter_checks=cached['checks'],
-            narration={'player_action_text': route['action'],
-                       'gm_text': '\n'.join(e['text'] for e in cached['events']) or '当前遭遇继续。'},
+            narration=narrative,
             next_jobs=[{'type': 'summarize', 'payload': {'turn_id': turn.id},
                         'dedup_key': f'encounter-summary:{state["id"]}'}] if not active else [],
         )

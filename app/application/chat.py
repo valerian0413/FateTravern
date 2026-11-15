@@ -23,6 +23,7 @@ from app.application.streaming import text_sink
 from app.prompts.loader import load
 from app.providers.base import ModelRequest, call_model
 from app.providers.json_stream import TextFieldWatch
+from app.rules.combat import incapacitating_consequence
 from app.api.notify import notify_world
 from app.storage.repositories import (
     ConflictError,
@@ -124,6 +125,9 @@ class ChatService:
                             raise ValidationError('此选项不接受战斗描述')
                         if source.result.get('combat_decision'):
                             decision = source.result['combat_decision']
+                            if (decision['kind'] == 'encounter_hit' and combat_description
+                                    and incapacitating_consequence(combat_description)):
+                                raise ValidationError('吸收伤害后角色仍能行动。请描述一处伤痕，或选择退出遭遇。')
                             turn.checkpoint['combat_decision'] = {
                                 **decision, 'choice': source.result['options'].index(text),
                                 'description': combat_description,
@@ -417,8 +421,30 @@ class InteractionFlow(NarrativeFlow):
             )
         notify_world(self._runtime, world_id)
 
+    async def acknowledge_action(self):
+        action = (self._intent.normalized_action or self._text).strip().rstrip('。！？.!?')
+        action = action.removeprefix('我').removeprefix('尝试').removeprefix('试着').strip()
+        text = f'好，你试着{action}。' if action and len(action) <= 72 else '好，我来判定这次行动。'
+        async with self._runtime.db.transaction() as db:
+            turns = TurnRepo(db)
+            turn = await turns.get(self._world_id, self._turn_id)
+            if turn.stage in (TurnStage.CANCELLED, TurnStage.COMPLETED) or turn.checkpoint.get('action_acknowledged'):
+                return
+            if turn.checkpoint.get('combat_decision'):
+                text = '好，按你选择的方式处理。'
+            message = await MessageRepo(db).append(
+                self._world_id, Channel.INTERACTION, 'gm', text,
+                request_id=self._request_id, turn_id=self._turn_id,
+            )
+            await turns.checkpoint(self._world_id, self._turn_id, turn.stage,
+                                   {**turn.checkpoint, 'action_acknowledged': True})
+            await StreamRepo(db).append(self._world_id, 'action.acknowledged',
+                                        {'message_id': message['id']}, request_id=self._request_id)
+        notify_world(self._runtime, self._world_id)
+
     @listen('explore')
     async def play_action(self):
+        await self.acknowledge_action()
         await self._chat.turns.execute(ActionCommand(
             world_id=self._world_id,
             request_id=self._request_id,
@@ -430,6 +456,7 @@ class InteractionFlow(NarrativeFlow):
 
     @listen('encounter')
     async def play_encounter(self):
+        await self.acknowledge_action()
         turn = await TurnRepo(self._runtime.db.conn).get(self._world_id, self._turn_id)
         public = self._context['public']
         route = {

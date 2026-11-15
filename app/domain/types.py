@@ -298,6 +298,7 @@ CHANGE_OPS = frozenset({
     'create_entity',
     'set_attribute',
     'resource_delta',
+    'currency_delta',
     'transfer_item',
     'append_fact',
     'supersede_fact',

@@ -9,6 +9,7 @@ from app.api.notify import notify_world
 from app.application.chat import Receipt
 from app.application.opening import briefing
 from app.domain.errors import NotFound
+from app.domain.inventory import denominations, unpack_legacy_coins
 from app.domain.types import Channel, Entity, EntityKind, Fact, FactStatus, Phase, Turn, TurnStage, World
 from app.rules.four_dice import load_config
 from app.modules.planning import validate_options
@@ -38,7 +39,8 @@ async def prepare(runtime, preset_id: str, overrides: dict | None = None) -> Wor
         clock=0,
         ruleset_id=preset.get('ruleset_id') or rules_config.get('ruleset_id', 'four-dice-v1'),
         ruleset_config={**rules_config, 'opening_options': validate_options(preset.get('opening_options', [])),
-                        'opening_guide': preset.get('opening_guide', {})},
+                        'opening_guide': preset.get('opening_guide', {}),
+                        'currency_denominations': denominations(preset.get('world_book'))},
         player_id=player_id,
     )
 
@@ -46,7 +48,7 @@ async def prepare(runtime, preset_id: str, overrides: dict | None = None) -> Wor
     async with runtime.db.transaction():
         await WorldRepo(runtime.db.conn).create(world)
         player = preset['player']
-        await EntityRepo(runtime.db.conn).upsert(Entity(
+        character = Entity(
             id=player_id, world_id=world_id, kind=EntityKind.PLAYER,
             name=player['name'],
             attributes={
@@ -57,7 +59,11 @@ async def prepare(runtime, preset_id: str, overrides: dict | None = None) -> Wor
                 'preset_id': preset.get('preset_id'),
             },
             revision=1,
-        ))
+        )
+        entities = {player_id: character}
+        unpack_legacy_coins(world, entities)
+        for entity in entities.values():
+            await EntityRepo(runtime.db.conn).upsert(entity)
         for place in preset.get('places') or []:
             eid = str(uuid.uuid4())
             temp_map[place['temp_id']] = eid
@@ -95,11 +101,11 @@ async def start(runtime, world_id: str, request_id: str) -> Receipt:
 
         snapshot = await worlds.get_snapshot(world_id)
         options = validate_options(world.ruleset_config.get('opening_options', []))
-        opening, options, prompt = briefing(snapshot, options)
         # Old saves can already have a player turn with the same opening request ID.
         if await turns.get_by_request(world_id, request_id):
             request_id = str(uuid.uuid4())
         turn_id = str(uuid.uuid4())
+        opening, options, prompt = await briefing(runtime, snapshot, options, turn_id)
         async with runtime.db.transaction():
             await turns.reserve(Turn(
                 id=turn_id, world_id=world_id, request_id=request_id, payload_hash='system:opening',

@@ -24,6 +24,7 @@ from app.domain.types import (
 )
 from app.api.notify import notify_world
 from app.application.streaming import text_sink
+from app.domain.inventory import currency_names, owned_items
 from app.jobs import world_time
 from app.modules import generation, narration, npc, planning, review, visibility
 from app.rules.combat import absorptions, damage_effects
@@ -237,6 +238,8 @@ class ActionFlow(NarrativeFlow):
             'world': await build_world_context(candidate_state, context_ids(candidate_state, action, command.intent.target_ids, history), budget=30),
             'public': build_public_context(candidate_state, [], [], action, 'planning').__dict__,
             'npc_cards': cards, 'skills': snapshot.entities[snapshot.world.player_id].attributes.get('skills', {}),
+            'inventory': owned_items(candidate_state),
+            'currency_denominations': currency_names(snapshot.world),
             'aspects': snapshot.entities[snapshot.world.player_id].attributes.get('aspects', []),
             'stress_boxes': stress_boxes(snapshot.entities[snapshot.world.player_id].attributes),
             'consequences': snapshot.entities[snapshot.world.player_id].attributes.get('consequences'),

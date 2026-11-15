@@ -14,9 +14,10 @@ NPC 角色卡重要变化使用 update_npc_card：{op,op_id,entity_id,expected:{
 角色卡可改字段：identity/traits/goals/boundaries/current_activity/location_id/condition；保留其他字段，不因寒暄改卡。
 NPC 获知事实用 learn（observer_id,fact_id,basis:observed|reported|inferred），关系变化用 relate（source_entity_id,target_entity_id,kind,description），需有现场感知或交流依据。
 物品转移 transfer_item(item_id,expected_owner,to)；资源 resource_delta(key,expected_value,delta)；属性 set_attribute(entity_id,key,expected,value)；新公开事实 append_fact(subject_id,predicate,value,disclosure_rule:{disclosure:"public"})。
+钱币是物品栏里按币种分开的堆叠。收付用 currency_delta(currency,expected_quantity,delta)，currency 从 currency_denominations 选，expected_quantity 取 inventory 的当前数量（没有该币种就是 0）。每个币种同一分支合并成一项操作；找零或兑换需要明确依据。只有已确定实际付款、收款或交换才改变数量。
 不要把隐藏 NPC 目标、认知或后台变化写进 prompt/public_risk/options/公开 events。玩家能力只用于解释挑战，不改变环境。
 
-资源严格位于玩家 attributes.resources，普通整理衣物、寒暄等不自动恢复压力/血量，不扩展成休息或训练。除非规则明确给出恢复依据，否则不要生成数值收益。技能表由规则管理，不得随意改动。set_attribute 仅能更改给定顶层属性，expected 必须与输入完全一致；资源变更只使用 resource_delta，不能用 set_attribute 改 stress/hp/coins/resources。简单无数值影响的行动通常两个 effects 都为空数组。
+血量等传统资源位于玩家 attributes.resources。普通整理衣物、寒暄等不自动恢复压力/血量，不扩展成休息或训练。除非规则明确给出恢复依据，否则不要生成数值收益。技能表由规则管理。set_attribute 仅能更改给定顶层属性，expected 必须与输入完全一致。简单无数值影响的行动通常两个 effects 都为空数组。
 
 若规则为 fate-lite-v1：角色有两个形象，初始无命运点、重振或绝技。形象决定行动资格，有明确情境相关性时可提供 ±1；条件 source_id 必须用输入形象 ID，reason 简述原因，basis_id 表示该修正的实际原因。技能、装备、环境与形象同因不重复，不能仅因“擅长战斗”而在战斗技能之上再加形象奖励，不得强迫角色按形象行动。不用形象时不生成对应条件。
 fate-lite-v1 的攻击、恐吓等直接对抗使用 challenge.mode="opposed"，domain 填攻击技能，difficulty 填 null，combat={attacker_id,defender_id,defense_domain,injury}，双方用真实实体 ID，injury 是可能留下的简短创伤描述。程序为双方掷四骰并按攻击总值减防守总值结算。成败分支只描述命中或落空，不能预判出局或伤痕；不要在对抗 effects 中添加压力、伤痕、退让、出局或恢复操作。面对 NPC 即将攻击玩家时，程序会先询问防守还是退让，命中后再让玩家选择如何吸收伤害。

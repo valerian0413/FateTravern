@@ -1,4 +1,15 @@
 import { request } from '../api.js';
+import { clearDraftText, renderTranscript, streamTranscript } from './transcript.js';
+
+function workshopMessage(message) {
+  const element = document.createElement('p');
+  element.className = `msg ${message.author}`;
+  const label = document.createElement('span');
+  label.textContent = message.author === 'player' ? '你：' : '主持人：';
+  const body = document.createElement('span');
+  element.append(label, body);
+  return { element, body };
+}
 
 const SECTIONS = [
   ['background', '背景', '这个世界是什么样的地方，人们怎样生活。'],
@@ -111,7 +122,6 @@ export async function mountWorkshop(root, onReady) {
       skills: Object.fromEntries(SKILLS.map((name) => [name, 0])),
       stunts: [],
       equipment: [],
-      money: 0,
     };
   }
 
@@ -167,8 +177,7 @@ export async function mountWorkshop(root, onReady) {
       ],
       skills,
       stunts: [],
-      equipment: (card.equipment || []).map((item) => String(item).trim()).filter(Boolean),
-      money: Math.max(0, Number.parseInt(card.money, 10) || 0),
+      equipment: card.equipment || [],
     };
   }
 
@@ -192,6 +201,13 @@ export async function mountWorkshop(root, onReady) {
     document.getElementById('create-page').scrollTop = 0;
     localBook = structuredClone(draft.book);
     localCharacter = draft.character ? structuredClone(draft.character) : emptyCharacter();
+    if (localCharacter.money > 0) {
+      const label = localBook.sections.currency.find(entry => entry.visibility === 'public'
+        && entry.status !== 'open' && entry.name)?.name;
+      const base = label?.split(/[·、，,/／]/).map(name => name.trim()).filter(Boolean).at(-1) || '钱币';
+      (localCharacter.equipment ??= []).push({ name: base, quantity: localCharacter.money });
+    }
+    delete localCharacter.money;
     localCharacter.skills = localCharacter.skills || {};
     for (const name of SKILLS) {
       if (localCharacter.skills[name] == null) localCharacter.skills[name] = 0;
@@ -243,8 +259,8 @@ export async function mountWorkshop(root, onReady) {
     return run;
   }
 
-  function render() {
-    renderChrome();
+  function render(replyId) {
+    renderChrome(replyId);
     const key = keyOf(draft);
     if (key !== paintedKey) {
       renderSheet();
@@ -257,7 +273,7 @@ export async function mountWorkshop(root, onReady) {
     paintedKey = keyOf(draft);
   }
 
-  function renderChrome() {
+  function renderChrome(replyId) {
     $('world-library').hidden = !choosing;
     $('world-editor').hidden = choosing;
     document.getElementById('creation-intro').hidden = !choosing;
@@ -271,13 +287,13 @@ export async function mountWorkshop(root, onReady) {
       : '左边随意聊想法，右边查看和修改条目。关键缺失会附上建议供你选择。';
     renderSteps();
     const chat = $('draft-chat');
-    chat.replaceChildren();
     $('draft-options').replaceChildren();
     $('draft-actions').replaceChildren();
     const locked = !draft || busy || !!draft.pending || draft.stage === 'ready';
     $('draft-input').disabled = locked;
     $('draft-form').querySelector('button').disabled = locked;
     if (!draft) {
+      renderTranscript(chat, [], workshopMessage);
       $('draft-status').textContent = '选择一个世界设定，或创建新的世界。';
       $('draft-input').placeholder = '先创建一份草稿';
       return;
@@ -288,13 +304,12 @@ export async function mountWorkshop(root, onReady) {
     $('draft-input').placeholder = draft.stage === 'character'
       ? '用几句话描述角色，例如：退役领航员，来找失踪的弟弟，认天气、水性好。'
       : '用几句话描述世界，例如：没有魔法的港城，货币是铜贝，出城靠河船。';
-    for (const message of draft.history || []) {
-      const p = document.createElement('p');
-      p.className = 'msg ' + (message.role === 'player' ? 'player' : 'gm');
-      p.textContent = (message.role === 'player' ? '你：' : '主持人：') + message.text;
-      chat.append(p);
-    }
-    chat.scrollTop = chat.scrollHeight;
+    const history = draft.history || [];
+    const messages = history.map((message, index) => ({
+      id: `${draft.id}:${draft.stage}:${index}`, author: message.role, text: message.text,
+      request_id: index === history.length - 1 && message.role === 'gm' ? replyId : undefined,
+    }));
+    renderTranscript(chat, messages, workshopMessage, { animate: Boolean(replyId), finalRequest: replyId });
     if (draft.pending) {
       const note = document.createElement('p');
       note.className = 'issues';
@@ -576,14 +591,16 @@ export async function mountWorkshop(root, onReady) {
       localCharacter.aspects[1].text = value;
       markDirty();
     }, { maxLength: 200 }));
-    addRow(table, '装备', '每行一件普通装备。', textControl((card.equipment || []).join('\n'), readOnly, (value) => {
-      localCharacter.equipment = value.split('\n').map((item) => item.trim()).filter(Boolean);
+    const equipment = (card.equipment || []).map(item => typeof item === 'string'
+      ? item
+      : `${item.name} × ${item.quantity}`);
+    addRow(table, '随身物品', '每行一种物品。可写数量，例如「铜币 × 5」。', textControl(equipment.join('\n'), readOnly, (value) => {
+      localCharacter.equipment = value.split('\n').map(item => item.trim()).filter(Boolean).map(item => {
+        const stack = item.match(/^(.+?)\s*×\s*(\d+)$/);
+        return stack ? { name: stack[1].trim(), quantity: Number(stack[2]) } : item;
+      });
       markDirty();
     }, { multiline: true, rows: 3 }));
-    addRow(table, '金钱', '使用世界货币的基本单位。', textControl(String(card.money ?? 0), readOnly, (value) => {
-      localCharacter.money = value;
-      markDirty();
-    }, { type: 'number', min: 0 }));
     if (table.childElementCount) wrap.append(table);
     if (sheetPage !== 2 && sheetPage !== 3) return wrap;
 
@@ -662,33 +679,27 @@ export async function mountWorkshop(root, onReady) {
     clearTimeout(timer);
     busy = true;
     renderChrome();
+    const chat = $('draft-chat');
+    const replyId = `${draft.id}:${draft.revision}`;
     const source = new EventSource(`/api/v1/workshop/${draft.id}/events`);
     source.addEventListener('assistant.delta', (ev) => {
       try {
         const data = JSON.parse(ev.data);
         const reply = data.payload?.text;
-        if (!reply) return;
-        const chat = $('draft-chat');
-        let line = chat.querySelector('[data-streaming]');
-        if (!line) {
-          line = document.createElement('p');
-          line.className = 'msg gm';
-          line.dataset.streaming = 'true';
-          chat.append(line);
-        }
-        line.textContent = '主持人：' + reply;
-        chat.scrollTop = chat.scrollHeight;
+        if (reply) streamTranscript(chat, replyId, reply, workshopMessage);
       } catch (_) {}
     });
     try {
       await flushSave();
       const next = await request(`/workshop/${draft.id}/messages`, { revision: draft.revision, text: text.trim() });
+      source.close();
       adopt(next);
       $('draft-input').value = '';
       busy = false;
-      render();
+      render(replyId);
       await refresh();
     } catch (error) {
+      clearDraftText(chat, replyId);
       busy = false;
       render();
       $('draft-status').textContent = error.message;

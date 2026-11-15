@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from app.domain.types import DisclosureGrant, PublicOutcome, Snapshot
+from app.domain.inventory import currency_names, owned_items
 from app.modules.visibility import filter_for
 
 
@@ -20,6 +21,8 @@ async def build_intent_context(snapshot: Snapshot, text: str) -> dict:
             'entities': [{'id':e.id,'name':e.name,'kind':e.kind.value,'aliases':e.attributes.get('aliases',[])} for e in snapshot.entities.values() if e.id==player_id or e.id in {f.subject_id for f in visible_facts}],
             'places': [{'id': p.id, 'name': p.name} for p in places],
             'player_skills': snapshot.entities[player_id].attributes.get('skills', {}),
+            'inventory': owned_items(snapshot),
+            'currency_denominations': currency_names(snapshot.world),
         },
         'text': text,
     }

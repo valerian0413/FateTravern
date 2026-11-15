@@ -1,7 +1,17 @@
 """Opposed hits and legal ways to absorb their shifts."""
+import re
 from itertools import combinations
 
 from app.domain.stress import CAPACITIES, stress_boxes
+
+
+def incapacitating_consequence(text):
+    """Recognize explicit declarations that a participant can no longer act."""
+    return bool(re.fullmatch(
+        r'(?:我|角色)?\s*(?:已(?:经)?|陷入|当场|直接)?\s*'
+        r'(?:昏迷(?:不醒)?|失去意识|无法(?:行动|继续战斗)|死亡|出局)[。！!\s]*',
+        text.strip(),
+    ))
 
 
 def absorptions(attributes, damage):
